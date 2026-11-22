@@ -1,152 +1,178 @@
 # CONATACOCH — Plataforma de Taxis y Colectivos de Chile
 
-> **Fase 1 de 3 — Infraestructura base, persistencia poliglota y carga inicial.**
-> Monorepo listo para evolucionar a una plataforma escalable, stateless y
-> desplegable con Docker.
+> **Fase 3 de 3 — Plataforma completa:** backend seguro, panel web mobile-first,
+> app Android nativa y pagos QR en tiempo real.
+> Monorepo reproducible con Docker, persistencia poliglota y arquitectura 4+1.
 
-![Fase](https://img.shields.io/badge/fase-1%20de%203-2dd4bf)
+![Fase](https://img.shields.io/badge/fase-3%20de%203-FFD100)
 ![Django](https://img.shields.io/badge/Django-5.2-0C4B33)
 ![DRF](https://img.shields.io/badge/DRF-3.18-A30000)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF)
+![Compose](https://img.shields.io/badge/Jetpack-Compose-4285F4)
 
 ---
 
 ## Tabla de contenidos
 
 1. [Resumen ejecutivo](#1-resumen-ejecutivo)
-2. [Stack tecnologico](#2-stack-tecnologico)
+2. [Stack tecnológico](#2-stack-tecnológico)
 3. [Estructura del monorepo](#3-estructura-del-monorepo)
-4. [Inicio rapido](#4-inicio-rapido)
+4. [Inicio rápido](#4-inicio-rápido)
 5. [Credenciales de prueba](#5-credenciales-de-prueba)
 6. [Arquitectura — Modelo 4+1](#6-arquitectura--modelo-41)
-   - [6.1 Vista Logica](#61-vista-logica)
-   - [6.2 Vista de Procesos](#62-vista-de-procesos)
-   - [6.3 Vista de Desarrollo](#63-vista-de-desarrollo)
-   - [6.4 Vista Fisica](#64-vista-fisica)
-   - [6.5 Vista de Escenarios](#65-vista-de-escenarios)
 7. [Bases de datos](#7-bases-de-datos)
 8. [Carga inicial idempotente](#8-carga-inicial-idempotente)
 9. [Escalabilidad horizontal](#9-escalabilidad-horizontal)
 10. [Seguridad](#10-seguridad)
 11. [API REST](#11-api-rest)
-12. [Operacion y troubleshooting](#12-operacion-y-troubleshooting)
-13. [Pruebas y validacion](#13-pruebas-y-validacion)
-14. [Trazabilidad con la rubrica](#14-trazabilidad-con-la-rubrica)
-15. [Roadmap Fases 2 y 3](#15-roadmap-fases-2-y-3)
+12. [Panel web mobile-first](#12-panel-web-mobile-first)
+13. [App Android](#13-app-android)
+14. [Pruebas, métricas y validación](#14-pruebas-métricas-y-validación)
+15. [Operación y troubleshooting](#15-operación-y-troubleshooting)
+16. [Trazabilidad con la rúbrica](#16-trazabilidad-con-la-rúbrica)
+17. [Evidencias y Git](#17-evidencias-y-git)
 
 ---
 
 ## 1. Resumen ejecutivo
 
-CONATACOCH es la plataforma del gremio de **taxis y colectivos de Chile**. Esta
-primera fase entrega la base tecnica sobre la que se construiran la app Android
-(conductores y pasajeros), el panel administrativo y los pagos con QR.
+CONATACOCH es la plataforma del gremio de **taxis y colectivos de Chile**. El
+proyecto se entregó en tres fases incrementales sobre el mismo monorepo:
 
-**Entregado en Fase 1**
+| Fase | Alcance | Estado |
+|---|---|---|
+| **Fase 1** | Infraestructura Docker, modelo 3FN, seed oficial, MongoDB Atlas, panel base, documentación 4+1 | ✅ |
+| **Fase 2** | Login Argon2id + JWT, RBAC, telemetría GPS anti-spoofing, turnos OTP, ETA, pagos QR, pruebas de carga | ✅ |
+| **Fase 3** | Panel web mobile-first, app Android Kotlin/MVVM, endpoints de flota/perfil/cierre de turno, CRUD admin completo, guía de evidencias | ✅ |
 
-| Componente | Estado |
-|---|---|
-| Entorno Docker escalable (`python:3.12-slim`) | ✅ `docker-compose.yml` + healthchecks |
-| Backend stateless Django 5 + DRF + drf-spectacular | ✅ `/api/docs/`, JWT, pool MySQL |
-| MySQL 8.0 normalizado en 3FN | ✅ 6 entidades, indices B-Tree, RESTRICT |
-| Carga inicial idempotente | ✅ 660 itinerarios, 1.320 paraderos, 5 usuarios demo |
-| MongoDB Atlas `telemetria_ubicacion` | ✅ PyMongo pool + indices `2dsphere`, compuesto y TTL |
-| Panel web servido por Nginx | ✅ `web-admin/` + reverse proxy `/api` |
-| Documentacion Modelo 4+1, escalabilidad y despliegue | ✅ este README + `docs/` |
+**Entregables verificables**
 
-**Datos oficiales cargados:** 660 itinerarios de la Region Metropolitana,
-396 folios unicos, 48 comunas, 617 combinaciones `(folio, nombre_recorrido)` y
+| Componente | Estado | Evidencia |
+|---|---|---|
+| Backend Django 5 + DRF | ✅ | `backend/`, `python manage.py check`, 64 pruebas |
+| MySQL 8.0 normalizado en 3FN | ✅ | 6 entidades, índices B-Tree, `PROTECT` |
+| MongoDB Atlas `telemetria_ubicacion` | ✅ | Índices `2dsphere`, compuesto y TTL 4 h |
+| Panel web mobile-first | ✅ | `web-admin/` con paleta `#0B0B0B` / `#FFFFFF` / `#FFD100` |
+| App Android nativa | ✅ | `android-app/`, `assembleDebug` → `BUILD SUCCESSFUL` |
+| Pagos QR de punta a punta | ✅ | Crear → alertar al conductor → confirmar → consultar estado |
+| Pruebas automatizadas | ✅ | `64 passed` con `pytest` |
+| Pruebas de carga | ✅ | GPS 50 req · `44.70 req/s`; ETA 100 req · `55.86 req/s` |
+| Documentación y evidencias | ✅ | este README + `docs/` + `docs/GUIA_EVIDENCIAS_Y_GIT.md` |
+
+**Datos oficiales cargados:** 660 itinerarios de la Región Metropolitana,
+396 folios únicos, 48 comunas, 617 combinaciones `(folio, nombre_recorrido)` y
 660 combinaciones `(folio, nombre_recorrido, tipo_trazado)`.
-
-> **Alcance:** la telemetria se *configura* en Fase 1 (esquema e indices), pero
-> el endpoint de ingesta en tiempo real y la app Android pertenecen a la Fase 2.
-> El modelo de pagos existe, pero el flujo QR completo pertenece a la Fase 3.
 
 ---
 
-## 2. Stack tecnologico
+## 2. Stack tecnológico
 
-| Capa | Tecnologia | Rol |
+| Capa | Tecnología | Rol |
 |---|---|---|
 | Runtime | **Python 3.12** (`python:3.12-slim`) | Base reproducible de la imagen |
 | API | **Django 5.2 + Django REST Framework 3.18** | Dominio y API REST |
 | Contratos | **drf-spectacular + sidecar** | OpenAPI 3 y Swagger UI local |
-| Auth | **djangorestframework-simplejwt** | Access/refresh tokens |
+| Auth | **SimpleJWT + Argon2id** | Access/refresh tokens y hash de passwords |
 | Driver SQL | **PyMySQL** (puro Python) | Sin toolchain nativo en la imagen |
 | RDBMS | **MySQL 8.0** | Consistencia transaccional (3FN) |
-| NoSQL | **MongoDB Atlas / 8.0 local** | Telemetria GeoJSON de alta escritura |
+| NoSQL | **MongoDB Atlas / 8.0 local** | Telemetría GeoJSON de alta escritura |
 | Driver NoSQL | **PyMongo** con `maxPoolSize` | Pool de conexiones documental |
 | Servidor | **Gunicorn `gthread`** | Workers + threads, stateless |
-| Web | **Nginx 1.27 Alpine** | Estaticos, reverse proxy, DNS dinamico |
+| Web | **Nginx 1.27 Alpine** | Estáticos, reverse proxy, DNS dinámico |
 | Cifrado | **cryptography (Fernet)** | Secretos OTP reversibles |
-| Contenedores | **Docker + Compose v2** | Orquestacion local y despliegue |
+| Web admin | **HTML5 + CSS3 + JavaScript ES2020** | SPA mobile-first sin build step |
+| Mapas web | **Leaflet + OpenStreetMap/Carto** | Mapa de flota y ETA |
+| QR web | **qrcode-generator (CDN)** | Render del código de pago |
+| Mobile | **Kotlin 2.0.21 + Jetpack Compose + Material 3** | App Android nativa |
+| Red mobile | **Retrofit 2.11 + OkHttp 4.12 + Gson** | Cliente REST con JWT |
+| Mapas mobile | **OSMDroid 6.1.20** | Mapa oscuro sin Google Play Services |
+| QR mobile | **ZXing core 3.5.3** | Render local del QR |
+| Contenedores | **Docker + Compose v2** | Orquestación local y despliegue |
 
 ---
 
 ## 3. Estructura del monorepo
 
 ```text
-proyecto_conatacoch1/
-├── docker-compose.yml               # Servicios de produccion (MySQL, backend, Nginx)
+PROYECTO-CONATACOCH/
+├── docker-compose.yml               # Servicios de producción
 ├── docker-compose.dev.yml           # Override local (expone :8000 y DEBUG=True)
-├── .env.example                     # Contrato de configuracion (12-factor)
-├── .dockerignore / .gitignore
+├── .env.example                     # Contrato de configuración (12-factor)
 ├── recorridos_conatacoch_taxi_colectivo_2.json   # Dataset oficial (660 filas)
 ├── README.md                        # Este documento
 │
 ├── backend/
-│   ├── Dockerfile                   # python:3.12-slim, non-root, read-only
-│   ├── entrypoint.sh                # wait DB -> migrate -> seed -> indices -> gunicorn
-│   ├── requirements.txt
-│   ├── manage.py
+│   ├── Dockerfile / entrypoint.sh
+│   ├── requirements.txt / manage.py
 │   ├── conatacoch/
-│   │   ├── __init__.py              # Shim PyMySQL -> MySQLdb
 │   │   ├── settings.py              # 12-factor, JWT, pools, Mongo, logging
-│   │   ├── urls.py                  # /api/docs/, /api/token/, admin
-│   │   ├── wsgi.py / asgi.py
+│   │   ├── urls.py                  # /api/docs/, /admin/
+│   │   └── wsgi.py / asgi.py
 │   ├── core/
-│   │   ├── models.py                # 6 entidades 3FN + indices + constraints
-│   │   ├── serializers.py
-│   │   ├── views.py                 # salud, metricas, viewsets read-only
-│   │   ├── pagination.py
-│   │   ├── admin.py
+│   │   ├── models.py                # 6 entidades 3FN + índices + constraints
+│   │   ├── serializers.py           # Serializers de lectura
+│   │   ├── serializers_fase2.py     # Login, telemetría, pagos, ETA
+│   │   ├── serializers_fase3.py     # CRUD admin completo y upsert de líneas
+│   │   ├── views.py                 # Salud, métricas, viewsets read-only
+│   │   ├── views_fase2.py           # Auth, RBAC, telemetría, turnos, QR
+│   │   ├── views_fase3.py           # Flota, perfil, cierre de turno, admin
+│   │   ├── urls.py                  # Rutas Fase 1 + 2 + 3
+│   │   ├── permissions.py           # EsAdmin, EsConductor, EsCliente, ...
+│   │   ├── security.py              # Argon2id, OTP, anti-spoofing, hash
 │   │   ├── crypto.py                # Fernet para OTP
-│   │   ├── mongo.py                 # Cliente pool + indices + insert GeoJSON
-│   │   ├── tests.py                 # 11 pruebas automatizadas
-│   │   ├── migrations/0001_initial.py
+│   │   ├── mongo.py                 # Pool + índices + insert GeoJSON
+│   │   ├── migrations/
 │   │   └── management/commands/
 │   │       ├── wait_for_db.py
 │   │       ├── seed_conatacoch.py
+│   │       ├── seed_carga.py        # Flota sintética para pruebas de carga
 │   │       └── init_mongo_indexes.py
+│   └── tests/                       # 64 pruebas (pytest)
 │
 ├── web-admin/
-│   ├── index.html                   # Dashboard responsive (sin CDN)
-│   ├── nginx.conf                   # Estaticos + proxy /api, /admin, /static
-│   └── assets/{styles.css,app.js,favicon.svg}
+│   ├── index.html                   # SPA mobile-first (login + 4 vistas)
+│   ├── nginx.conf                   # Estáticos + proxy /api, /admin, /static
+│   └── assets/
+│       ├── styles.css               # Paleta estricta y layout de teléfono
+│       ├── app.js                   # Cliente API, rol, mapa, QR, CRUD
+│       ├── favicon.svg
+│       └── recorridos_conatacoch.json  # Catálogo oficial (660 filas)
 │
-├── docs/
-│   ├── arquitectura-4plus1.md       # Decisiones y diagramas extendidos
-│   ├── modelo-datos.md              # Diccionario de datos e indices
-│   └── despliegue.md                # Runbook de despliegue y produccion
+├── android-app/
+│   ├── settings.gradle.kts / build.gradle.kts
+│   ├── gradle.properties            # CONATACOCH_API_BASE_URL
+│   ├── gradlew / gradlew.bat
+│   └── app/src/main/
+│       ├── AndroidManifest.xml
+│       ├── java/cl/conatacoch/app/
+│       │   ├── core/                # Red, sesión, GPS, QR, feedback
+│       │   ├── domain/              # Modelos y contratos de repositorio
+│       │   ├── data/                # DTOs, mappers, repositorios
+│       │   └── ui/                  # Login, pasajero, conductor, admin
+│       └── res/                     # Tema, strings, drawables, XML
 │
-└── android-app/
-    └── README.md                    # Reservado para Fase 2
+└── docs/
+    ├── arquitectura-4plus1.md
+    ├── modelo-datos.md
+    ├── despliegue.md
+    └── GUIA_EVIDENCIAS_Y_GIT.md     # Capturas y comandos Git por rama
 ```
 
 ---
 
-## 4. Inicio rapido
+## 4. Inicio rápido
 
 ### 4.1 Prerrequisitos
 
 - Docker Engine / Docker Desktop con **Compose v2** (`docker compose version`).
 - 4 GB de RAM libres recomendados.
-- Opcional: cuenta **MongoDB Atlas** para el camino de produccion.
-- Opcional: Python 3.12 si se desea ejecutar sin Docker.
+- Opcional: cuenta **MongoDB Atlas** para el camino de producción.
+- Opcional: Python 3.12, Node 22 y Android Studio para desarrollo sin Docker.
 
-### 4.2 Configuracion
+### 4.2 Configuración
 
 ```bash
 cp .env.example .env
@@ -158,7 +184,7 @@ En PowerShell:
 Copy-Item .env.example .env
 ```
 
-Generar secretos reales (nunca usar los valores de ejemplo):
+Generar secretos reales:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(64))"   # SECRET_KEY
@@ -176,37 +202,27 @@ MYSQL_PASSWORD=<password fuerte>
 
 ### 4.3 Levantar el entorno
 
-**Opcion A — demo completa sin Atlas (Mongo local):**
+**Opción A — demo completa sin Atlas (Mongo local):**
 
 ```bash
 docker compose --profile mongo-local up -d --build
 ```
 
-**Opcion B — MongoDB Atlas (recomendada para produccion):**
-
-1. Crear un cluster en [MongoDB Atlas](https://www.mongodb.com/atlas).
-2. Crear un usuario de base de datos y habilitar el acceso de red (en
-   produccion: VPC peering / PrivateLink, no `0.0.0.0/0`).
-3. Copiar la cadena de conexion en `.env`:
+**Opción B — MongoDB Atlas (recomendada para producción):**
 
 ```dotenv
 MONGO_ATLAS_URI=mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
 ```
 
-4. Levantar sin el perfil local:
-
 ```bash
 docker compose up -d --build
 ```
 
-Al iniciar, el backend ejecuta automaticamente:
+Al iniciar, el backend ejecuta automáticamente:
 
 ```text
 wait_for_db -> migrate -> seed_conatacoch -> init_mongo_indexes -> gunicorn
 ```
-
-> La primera ejecucion puede tardar 1–2 minutos (MySQL + 660 recorridos +
-> 1.320 paraderos).
 
 ### 4.4 URLs
 
@@ -223,23 +239,22 @@ wait_for_db -> migrate -> seed_conatacoch -> init_mongo_indexes -> gunicorn
 | MongoDB local (perfil) | `localhost:27017` |
 | Backend directo (solo dev) | `http://localhost:8000` con `docker-compose.dev.yml` |
 
-El backend **no publica puerto en produccion**: todo entra por Nginx, lo que
-permite escalar replicas sin conflictos de puertos.
+El backend **no publica puerto en producción**: todo entra por Nginx, lo que
+permite escalar réplicas sin conflictos de puertos.
 
-### 4.5 Modo desarrollo (backend expuesto)
+### 4.5 Modo desarrollo
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-Expone `http://localhost:8000` y activa `DEBUG=True` sin montar codigo fuente
-(la imagen sigue siendo stateless y `read_only`).
+Expone `http://localhost:8000` y activa `DEBUG=True` sin montar código fuente.
 
 ---
 
 ## 5. Credenciales de prueba
 
-Creadas por `seed_conatacoch` con hashing PBKDF2 de Django.
+Creadas por `seed_conatacoch` con hashing Argon2id/PBKDF2 de Django.
 
 | Rol | RUT | Email | Password | Folio | Patente |
 |---|---|---|---|---|---|
@@ -249,40 +264,38 @@ Creadas por `seed_conatacoch` con hashing PBKDF2 de Django.
 | **CLIENTE** | `44.444.444-4` | `pasajero1@conatacoch.cl` | `Pasajero2026!` | — | — |
 | **CLIENTE** | `55.555.555-5` | `pasajero2@conatacoch.cl` | `Pasajero2026!` | — | — |
 
-> ⚠️ **Solo demo.** Cambiar obligatoriamente antes de produccion. Los RUT y
-> passwords son los exigidos por la especificacion de la Fase 1; el validador
-> de formularios exige 12 caracteres, por lo que estas claves demo se cargan
-> por comando (bypass controlado) y deben rotarse.
+> ⚠️ **Solo demo.** Cambiar obligatoriamente antes de producción.
 
 ---
 
 ## 6. Arquitectura — Modelo 4+1
 
-El diseno sigue **Kruchten (1995)**: cuatro vistas de soporte (Logica,
-Procesos, Desarrollo, Fisica) y una vista de Escenarios que las valida.
+El diseño sigue **Kruchten (1995)**: cuatro vistas de soporte (Lógica,
+Procesos, Desarrollo, Física) y una vista de Escenarios que las valida.
 
-### 6.1 Vista Logica
+### 6.1 Vista Lógica
 
-Describe **que** hace el sistema y como se descompone en capas y modulos.
+Describe **qué** hace el sistema y cómo se descompone en capas y módulos.
 
 ```mermaid
 flowchart LR
-    subgraph Presentacion["Presentacion"]
-        WEB["web-admin<br/>Nginx + HTML/CSS/JS"]
-        AND["android-app<br/>(Fase 2)"]
+    subgraph Presentacion["Presentación"]
+        WEB["web-admin<br/>HTML/CSS/JS mobile-first"]
+        AND["android-app<br/>Kotlin + Compose"]
     end
 
-    subgraph Aplicacion["Aplicacion"]
+    subgraph Aplicacion["Aplicación"]
         NGX["Nginx<br/>reverse proxy"]
         API["Django 5 + DRF"]
         JWT["SimpleJWT<br/>access / refresh"]
         OAS["drf-spectacular<br/>OpenAPI 3"]
+        RBAC["Permisos RBAC<br/>EsAdmin / EsConductor / EsCliente"]
     end
 
     subgraph Dominio["Dominio CONATACOCH"]
-        MOD["Modelos 3FN<br/>Usuario, Linea, Vehiculo,<br/>Conductor, Paradero, Pago"]
+        MOD["Modelos 3FN<br/>Usuario, Línea, Vehículo,<br/>Conductor, Paradero, Pago"]
         SEED["seed_conatacoch"]
-        SEC["Validadores RUT/patente<br/>OTP Fernet / token hash"]
+        SEC["Argon2id, OTP Fernet,<br/>anti-spoofing, hash de token"]
     end
 
     subgraph Datos["Persistencia poliglota"]
@@ -291,9 +304,10 @@ flowchart LR
     end
 
     WEB --> NGX --> API
-    AND -.-> NGX
+    AND --> NGX
     API --> JWT
     API --> OAS
+    API --> RBAC
     API --> MOD
     MOD --> MYSQL
     SEED --> MYSQL
@@ -301,33 +315,36 @@ flowchart LR
     API -->|"pool PyMongo"| MONGO
 ```
 
-| Capa | Modulos | Responsabilidad |
+| Capa | Módulos | Responsabilidad |
 |---|---|---|
-| Presentacion | `web-admin/`, `android-app/` (F2) | Dashboard Nginx y clientes |
-| Borde | `web-admin/nginx.conf` | TLS termination (externo), estaticos, proxy |
-| Aplicacion | `core/views.py`, `serializers.py`, `urls.py` | Contratos REST, permisos, paginacion |
-| Seguridad | `settings.py`, `crypto.py` | JWT, throttling, cifrado OTP, headers |
-| Dominio | `core/models.py` | Entidades, reglas, constraints, indices |
-| Datos | MySQL + `mongo.py` | Transacciones 3FN y telemetria GeoJSON |
-| Operacion | `entrypoint.sh`, comandos | Migracion, seed, indices, health |
+| Presentación | `web-admin/`, `android-app/` | Panel mobile-first y app nativa |
+| Borde | `web-admin/nginx.conf` | TLS termination (externo), estáticos, proxy |
+| Aplicación | `core/views*.py`, `serializers*.py`, `urls.py` | Contratos REST, permisos, paginación |
+| Seguridad | `settings.py`, `security.py`, `permissions.py`, `crypto.py` | JWT, Argon2id, OTP, RBAC, anti-spoofing |
+| Dominio | `core/models.py` | Entidades, reglas, constraints, índices |
+| Datos | MySQL + `mongo.py` | Transacciones 3FN y telemetría GeoJSON |
+| Operación | `entrypoint.sh`, comandos | Migración, seed, índices, health |
 
 **Decisiones clave**
 
-- **Usuario unico con discriminador `rol`** en lugar de tablas separadas por
-  rol: evita duplicacion de credenciales y mantiene una sola identidad.
+- **Usuario único con discriminador `rol`** en lugar de tablas separadas por
+  rol: evita duplicación de credenciales y mantiene una sola identidad.
 - **`LineaColectiva`** modela el itinerario como entidad; la clave natural es
   `(folio, nombre_recorrido, tipo_trazado)` porque el dataset repite folios y
   pares folio/nombre.
 - **`Conductor.folio_conatacoch`** es un dato operativo del turno (puede diferir
-  del folio asignado al vehiculo en relevos), por lo que no es redundante.
-- **`TransaccionPago`** referencia lineas y conductor con `PROTECT` para
+  del folio asignado al vehículo en relevos), por lo que no es redundante.
+- **`TransaccionPago`** referencia líneas y conductor con `PROTECT` para
   preservar trazabilidad financiera.
-- **MongoDB** no reemplaza a MySQL: se usa solo para telemetria de alta
-  escritura con patron *write-heavy, read-latest*, TTL y consultas geoespaciales.
+- **MongoDB** no reemplaza a MySQL: se usa solo para telemetría de alta
+  escritura con patrón *write-heavy, read-latest*, TTL y consultas geoespaciales.
+- **Fase 3 es aditiva**: `views_fase3.py` y `serializers_fase3.py` no modifican
+  la lógica validada de Fase 2; solo agregan endpoints de apoyo para mapas,
+  perfil y CRUD administrativo.
 
 ### 6.2 Vista de Procesos
 
-Describe **como** fluyen los procesos concurrentes y de arranque.
+Describe **cómo** fluyen los procesos concurrentes y de arranque.
 
 **Arranque del contenedor (idempotente):**
 
@@ -351,7 +368,7 @@ sequenceDiagram
     B->>G: exec gunicorn (workers x threads)
 ```
 
-**Solicitud HTTP tipica:**
+**Solicitud HTTP típica:**
 
 ```mermaid
 sequenceDiagram
@@ -372,56 +389,82 @@ sequenceDiagram
     N-->>U: 200 OK
 ```
 
-**Procesos concurrentes y garantias**
+**Pago QR de punta a punta:**
 
-| Proceso | Concurrencia | Garantia |
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as Pasajero
+    participant API as API Django
+    participant M as MySQL
+    participant C as Conductor
+
+    P->>API: POST /api/pagos/qr/ {conductor_id, linea_id, monto}
+    API->>M: INSERT transaccion (PENDIENTE, UUID)
+    API-->>P: {codigo_qr_uuid, estado, monto}
+    P->>P: Render QR local (ZXing / qrcode-generator)
+    C->>API: GET /api/transacciones/?estado=PENDIENTE
+    API-->>C: pago pendiente
+    C->>C: Alerta visual + sonora
+    C->>API: POST /api/pagos/confirmar/ {codigo_qr_uuid}
+    API->>M: UPDATE estado=PAGADO
+    P->>API: GET /api/transacciones/?search=uuid
+    API-->>P: estado PAGADO
+```
+
+**Procesos concurrentes y garantías**
+
+| Proceso | Concurrencia | Garantía |
 |---|---|---|
-| API de lectura | Workers/threads Gunicorn | Sin estado compartido; cualquier replica responde |
+| API de lectura | Workers/threads Gunicorn | Sin estado compartido; cualquier réplica responde |
 | Seed | `transaction.atomic()` al arrancar | Todo o nada; `update_or_create` evita duplicados |
-| Migraciones | Un solo contenedor al inicio | Idempotentes; en multi-replica usar job aparte |
-| Indices Mongo | Idempotentes (`create_index`) | Seguro reejecutar; TTL 14400 s |
-| Pago (Fase 3) | Transaccion + RESTRICT | No se borran referencias financieras |
-| Telemetria (Fase 2) | Inserción append-only | TTL elimina documentos > 4 h |
+| Migraciones | Un solo contenedor al inicio | Idempotentes; en multi-réplica usar job aparte |
+| Índices Mongo | Idempotentes (`create_index`) | Seguro reejecutar; TTL 14400 s |
+| Pago | Transacción + RESTRICT | No se borran referencias financieras |
+| Telemetría | Inserción append-only | TTL elimina documentos > 4 h |
+| GPS conductor | Corrutina cada 5 s | Una sola sesión activa; anti-spoofing en servidor |
+| Polling de pagos | Cada 5 s en conductor | Detección de pagos nuevos y alerta sonora |
 
 **Estado y sesiones:** las sesiones viven en MySQL
-(`django.contrib.sessions.backends.db`), la autenticacion API es JWT y no hay
+(`django.contrib.sessions.backends.db`), la autenticación API es JWT y no hay
 archivos locales. Esto habilita escalado horizontal sin *sticky sessions*.
 
 ### 6.3 Vista de Desarrollo
 
-Describe la organizacion del equipo, el monorepo y el flujo de trabajo.
+Describe la organización del equipo, el monorepo y el flujo de trabajo.
 
-| Area | Responsable | Artefactos |
+| Área | Responsable | Artefactos |
 |---|---|---|
-| Infraestructura | DevOps / Cloud | Compose, Dockerfile, `.env`, redes, volumenes |
-| Backend / datos | Full-stack / Data | `core/`, migraciones, seed, indices Mongo |
+| Infraestructura | DevOps / Cloud | Compose, Dockerfile, `.env`, redes, volúmenes |
+| Backend / datos | Full-stack / Data | `core/`, migraciones, seed, índices Mongo |
 | Frontend admin | Frontend | `web-admin/` |
-| Mobile | Android | `android-app/` (Fase 2) |
-| Calidad | QA | `core/tests.py`, smoke tests, OpenAPI |
+| Mobile | Android | `android-app/` |
+| Calidad | QA | `backend/tests/`, `bench_baseline.py`, OpenAPI |
 
 **Convenciones**
 
-- Dominio en espanol (`LineaColectiva`, `Paradero`); framework en ingles.
-- Configuracion **solo** por variables de entorno (12-factor).
-- Cambios de esquema siempre via migraciones versionadas.
-- Serializers de solo lectura en Fase 1 para no exponer escritura sin reglas.
+- Dominio en español (`LineaColectiva`, `Paradero`); framework en inglés.
+- Configuración **solo** por variables de entorno (12-factor).
+- Cambios de esquema siempre vía migraciones versionadas.
+- Fase 3 no toca archivos validados de Fase 1/2: agrega módulos nuevos.
 - Secretos nunca en Git (`.env` ignorado; `.env.example` documenta el contrato).
-- Imagen inmutable: sin bind mounts de codigo en produccion.
+- Imagen inmutable: sin bind mounts de código en producción.
+- App Android sin `google-services.json`: mapas con OSMDroid y QR con ZXing.
 
 **Flujo para agregar una entidad**
 
 ```bash
 # 1. Editar backend/core/models.py
-# 2. Migracion
+# 2. Migración
 docker compose exec backend python manage.py makemigrations core
 docker compose exec backend python manage.py migrate
 # 3. Serializer + ViewSet + router
 # 4. Pruebas
-docker compose exec backend python manage.py test core
-# 5. Documentacion automatica en /api/docs/
+docker compose exec backend python -m pytest tests/ -q
+# 5. Documentación automática en /api/docs/
 ```
 
-**Ejecucion local sin Docker (util para pruebas)**
+**Ejecución local sin Docker (útil para pruebas)**
 
 ```powershell
 py -3.12 -m venv .venv
@@ -433,15 +476,12 @@ $env:SECRET_KEY="dev-only"
 cd backend
 python manage.py migrate
 python manage.py seed_conatacoch
-python manage.py runserver
+python -m pytest tests/ -q
 ```
 
-Con `DEBUG=True` los estaticos de Swagger y del admin se sirven con
-*finders* de Whitenoise, sin necesidad de `collectstatic`.
+### 6.4 Vista Física
 
-### 6.4 Vista Fisica
-
-Describe el despliegue, nodos, contenedores, redes y volumenes.
+Describe el despliegue, nodos, contenedores, redes y volúmenes.
 
 ```mermaid
 flowchart TB
@@ -458,11 +498,12 @@ flowchart TB
     end
 
     INTERNET["Internet / LAN"] -->|":8080"| NGX
+    MOBILE["App Android"] -->|"HTTPS / LAN"| NGX
     NGX -->|"proxy /api /admin /static"| BE1
     NGX --> BE2
     BE1 --> DB
     BE2 --> DB
-    BE1 -.->|"solo si MONGO_ATLAS_URI vacio"| ML
+    BE1 -.->|"solo si MONGO_ATLAS_URI vacío"| ML
     BE1 -->|"TLS 27017"| ATLAS[("MongoDB Atlas<br/>telemetria_ubicacion")]
     DB --- V1
     ML --- V2
@@ -475,7 +516,7 @@ flowchart TB
 | `web_admin` | `nginx:1.27-alpine` | `${WEB_ADMIN_PORT:-8080}:80` | montajes `:ro` | `GET /healthz` |
 | `mongo_local` | `mongo:8.0` | `27017:27017` | `conatacoch_mongo_data` | `mongosh ping` |
 
-**Topologia de produccion recomendada**
+**Topología de producción recomendada**
 
 ```text
 Internet
@@ -494,8 +535,8 @@ web_admin (Nginx)  ──►  backend x N (Gunicorn)
 
 - MySQL **no** se publica a Internet; solo `conatacoch_net`.
 - Atlas se consume por TLS (`mongodb+srv`).
-- El backend puede correr en varias replicas porque no escribe estado local.
-- Los volumenes solo almacenan MySQL/Mongo local; el backend no persiste nada.
+- El backend puede correr en varias réplicas porque no escribe estado local.
+- Los volúmenes solo almacenan MySQL/Mongo local; el backend no persiste nada.
 
 ### 6.5 Vista de Escenarios
 
@@ -504,33 +545,33 @@ Valida que las otras cuatro vistas cubren los casos de uso reales.
 | # | Escenario | Actores | Flujo resumido | Componentes |
 |---|---|---|---|---|
 | E1 | Administrador consulta recorridos | Admin | Login JWT → panel → filtro comuna | Nginx, DRF, MySQL |
-| E2 | Pasajero busca un colectivo | Pasajero | Abre panel/API → filtra origen/destino | Nginx, DRF, MySQL |
-| E3 | Conductor inicia turno (F2) | Conductor | Login → estado `en_turno` → telemetria | DRF, MySQL, Atlas |
-| E4 | Pago con QR (F3) | Pasajero + conductor | Genera UUID → valida → registra pago | DRF, MySQL, JWT |
+| E2 | Pasajero busca un colectivo | Pasajero | Abre panel/app → filtra origen/destino | Nginx, DRF, MySQL |
+| E3 | Conductor inicia turno | Conductor | Login → OTP → `en_turno` → telemetría | DRF, MySQL, Atlas |
+| E4 | Pago con QR | Pasajero + conductor | Genera UUID → alerta → confirma → estado | DRF, MySQL, JWT |
 | E5 | Operador revisa salud | DevOps | `/api/health/` → MySQL + Mongo | Nginx, DRF, Atlas |
-| E6 | Arranque/recuperacion | DevOps | Compose levanta → migrate + seed | Docker, MySQL |
+| E6 | Arranque/recuperación | DevOps | Compose levanta → migrate + seed | Docker, MySQL |
+| E7 | Admin gestiona flota | Admin | CRUD conductor/línea/tarifa | Nginx, DRF, MySQL |
+| E8 | Pasajero ve flota en vivo | Pasajero | Mapa + ETA + cupos | Leaflet/OSMDroid, Atlas |
 
-**Escenario E2 — busqueda publica (implementado):**
+**Escenario E2 — búsqueda pública:**
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant P as Pasajero
-    participant W as Panel web
+    participant W as Panel web / App
     participant A as API /api/lineas
     participant D as MySQL
 
     P->>W: escribe "Melipilla"
     W->>A: GET /api/lineas/?search=Melipilla&page_size=25
-    A->>D: full-text LIKE + indices de comuna
+    A->>D: full-text LIKE + índices de comuna
     D-->>A: resultados paginados
     A-->>W: JSON
     W-->>P: tabla de recorridos y tarifas
 ```
 
-**Escenario E3 — telemetria (preparado, Fase 2):** el documento ya esta
-definido y los indices existen; falta exponer el endpoint de ingesta y el
-consumo en tiempo real.
+**Escenario E4 — pago QR:** ver diagrama de la Vista de Procesos.
 
 ---
 
@@ -540,7 +581,7 @@ consumo en tiempo real.
 
 Base: `conatacoch`, charset `utf8mb4`, collation `utf8mb4_0900_ai_ci`.
 
-| Entidad | PK | Atributos principales | Claves / indices |
+| Entidad | PK | Atributos principales | Claves / índices |
 |---|---|---|---|
 | `usuario` | `id` | rut, nombre, email, password_hash, rol, activo, intentos_fallidos, bloqueado_hasta | `rut` UNIQUE, `email` UNIQUE, `rol+activo`, `bloqueado_hasta` |
 | `linea_colectiva` | `id` | region, folio, tipo_servicio, nombre_recorrido, tipo_trazado, origen/destino, tarifa_actual | `folio` INDEX, `(folio,nombre_recorrido,tipo_trazado)` UNIQUE, `(region,folio)`, comunas |
@@ -549,33 +590,32 @@ Base: `conatacoch`, charset `utf8mb4`, collation `utf8mb4_0900_ai_ci`.
 | `paradero` | `id` | nombre, comuna, latitud, longitud, linea_id | `(linea,nombre)` UNIQUE, `(comuna,linea)`, `(latitud,longitud)` |
 | `transaccion_pago` | `id` | codigo_qr_uuid, pasajero_id, conductor_id, linea_id, monto, fecha_hora, estado | `codigo_qr_uuid` UNIQUE, `(conductor,fecha)`, `(linea,fecha)`, `(pasajero,fecha)`, `(estado,fecha)` |
 
-**Justificacion 3FN**
+**Justificación 3FN**
 
-1. **1FN:** todos los atributos son atomicos. No hay listas de paraderos ni
+1. **1FN:** todos los atributos son atómicos. No hay listas de paraderos ni
    arreglos embebidos; los paraderos son filas propias con FK.
 2. **2FN:** la PK surrogate `id` no genera dependencias parciales; la clave
-   natural compuesta se declara como restriccion unica y todos los atributos
+   natural compuesta se declara como restricción única y todos los atributos
    dependen del itinerario completo.
 3. **3FN:** no hay dependencias transitivas entre atributos no clave. Comunas,
-   origenes y destinos son atributos del recorrido; no se almacena una tabla de
-   comunas duplicada ni el nombre de la linea dentro del vehiculo, conductor o
+   orígenes y destinos son atributos del recorrido; no se almacena una tabla de
+   comunas duplicada ni el nombre de la línea dentro del vehículo, conductor o
    pago (solo la FK).
 4. **Sin redundancia controlada:** `tarifa_actual` es el valor vigente de la
-   linea; un historial de tarifas seria una tabla adicional en Fase 3.
-5. **Clave natural del dataset:** se verifico que 660 filas producen 617 pares
+   línea; un historial de tarifas sería una tabla adicional futura.
+5. **Clave natural del dataset:** 660 filas producen 617 pares
    `(folio, nombre_recorrido)`; al agregar `tipo_trazado` se obtienen 660
-   combinaciones unicas. Por eso la restriccion es triple y no `folio` solo.
+   combinaciones únicas. Por eso la restricción es triple y no `folio` solo.
 
 **Integridad referencial**
 
 - Todas las FK usan `on_delete=PROTECT` en Django, equivalente ORM a
   `ON DELETE RESTRICT`.
-- MySQL/InnoDB aplica **RESTRICT por defecto** a las FK, por lo que el borrado
-  de una linea/vehiculo/conductor referenciado falla tambien a nivel de motor.
-- Restricciones `CHECK` adicionales: montos y tarifas ≥ 0, capacidades 1–30,
-  coordenadas en rango, cupos 0–30, region/folio > 0.
+- MySQL/InnoDB aplica **RESTRICT por defecto** a las FK.
+- Restricciones `CHECK`: montos y tarifas ≥ 0, capacidades 1–30, coordenadas en
+  rango, cupos 0–30, region/folio > 0.
 
-**Indices B-Tree** (nombres reales de la migracion)
+**Índices B-Tree** (nombres reales de la migración)
 
 ```text
 usuario:            idx_usuario_rol_activo, idx_usuario_bloqueado
@@ -593,12 +633,7 @@ transaccion_pago:   idx_pago_conductor_fecha, idx_pago_linea_fecha,
                     + UNIQUE(codigo_qr_uuid)
 ```
 
-> Los indices se declaran explicitamente en `Meta.indexes` y las restricciones
-> en `Meta.constraints`; no dependen de nombres autogenerados.
-
 ### 7.2 Pool de conexiones MySQL
-
-En `settings.py`:
 
 ```python
 "CONN_MAX_AGE": 600,          # reutiliza conexiones 10 minutos
@@ -611,12 +646,10 @@ En `settings.py`:
 ```
 
 Gunicorn usa `gthread` con `GUNICORN_WORKERS=3` y `GUNICORN_THREADS=4`.
-Cada thread reutiliza la conexion del worker, reduciendo el costo de handshake
-y manteniendo el consumo dentro de `max_connections=300` de MySQL.
 
 ### 7.3 MongoDB Atlas — `telemetria_ubicacion`
 
-**Documento GeoJSON** (coleccion `ubicaciones`):
+**Documento GeoJSON** (colección `ubicaciones`):
 
 ```json
 {
@@ -628,39 +661,25 @@ y manteniendo el consumo dentro de `max_connections=300` de MySQL.
   "ubicacion": { "type": "Point", "coordinates": [-70.6693, -33.4489] },
   "velocidad_kmh": 38.5,
   "rumbo": 270,
-  "timestamp": { "$date": "2026-11-21T14:30:00Z" }
+  "timestamp": { "$date": "2026-11-22T14:30:00Z" }
 }
 ```
 
 > GeoJSON usa orden **`[longitud, latitud]`**. El timestamp se guarda en UTC.
 
-**Indices creados automaticamente** (`init_mongo_indexes`, idempotente):
+**Índices creados automáticamente** (`init_mongo_indexes`, idempotente):
 
-| Nombre | Claves | Opcion | Proposito |
+| Nombre | Claves | Opción | Propósito |
 |---|---|---|---|
 | `idx_ubicacion_2dsphere` | `ubicacion` | `2dsphere` | `$near`, `$geoWithin`, distancia |
-| `idx_folio_timestamp` | `folio_linea: 1, timestamp: -1` | — | Ultima posicion por recorrido |
-| `idx_timestamp_ttl` | `timestamp: 1` | `expireAfterSeconds: 14400` | Retencion 4 horas |
-| `idx_vehiculo_timestamp` | `id_vehiculo: 1, timestamp: -1` | — | Ultima posicion por vehiculo |
+| `idx_folio_timestamp` | `folio_linea: 1, timestamp: -1` | — | Última posición por recorrido |
+| `idx_timestamp_ttl` | `timestamp: 1` | `expireAfterSeconds: 14400` | Retención 4 horas |
+| `idx_vehiculo_timestamp` | `id_vehiculo: 1, timestamp: -1` | — | Última posición por vehículo |
 
-**Seleccion del backend:** si `MONGO_ATLAS_URI` tiene valor se usa Atlas con
-`tls=True`; si esta vacio se usa `MONGO_LOCAL_URI`
+**Selección del backend:** si `MONGO_ATLAS_URI` tiene valor se usa Atlas con
+`tls=True`; si está vacío se usa `MONGO_LOCAL_URI`
 (`mongodb://mongo_local:27017`). El cliente se crea una vez por proceso con
 `maxPoolSize=50`, `minPoolSize=5` y `serverSelectionTimeoutMS=5000`.
-
-**Verificar indices:**
-
-```bash
-docker compose exec backend python manage.py init_mongo_indexes
-# o en mongosh:
-use telemetria_ubicacion
-db.ubicaciones.getIndexes()
-```
-
-> El monitor TTL de MongoDB se ejecuta aproximadamente cada 60 s; la expiracion
-> no es exacta al segundo. Si se cambia `MONGO_TTL_SECONDS`, usar `collMod` sobre
-> el indice existente (MongoDB no permite recrearlo con otra opcion sin
-> conflicto).
 
 ---
 
@@ -668,38 +687,32 @@ db.ubicaciones.getIndexes()
 
 **Comando:** `python manage.py seed_conatacoch`
 
-Se ejecuta automaticamente si `SEED_ON_START=true` (default). Es seguro
+Se ejecuta automáticamente si `SEED_ON_START=true` (default). Es seguro
 reejecutarlo: usa `update_or_create` con las claves naturales.
 
 | Paso | Resultado |
 |---|---|
 | Lee `recorridos_conatacoch_taxi_colectivo_2.json` | 660 itinerarios |
-| `update_or_create` por `(folio, nombre_recorrido, tipo_trazado)` | 660 lineas |
-| Crea paraderos de origen/destino por linea | 1.320 paraderos |
-| Crea usuarios, vehiculos y conductores demo | 5 usuarios, 2 vehiculos, 2 conductores |
+| `update_or_create` por `(folio, nombre_recorrido, tipo_trazado)` | 660 líneas |
+| Crea paraderos de origen/destino por línea | 1.320 paraderos |
+| Crea usuarios, vehículos y conductores demo | 5 usuarios, 2 vehículos, 2 conductores |
 | Asigna tarifa demo | urbana 1.000 CLP / rural 1.500 CLP |
-| Cifra OTP de conductores y deja token vacio | Secretos protegidos |
+| Cifra OTP de conductores y deja token vacío | Secretos protegidos |
 
-**Paraderos:** se usa el centroide aproximado de cada comuna de la Region
-Metropolitana (mapa de 48 comunas) mas un *jitter* deterministico de ~1 km
-derivado de SHA-256. Es data base para desarrollo; en produccion se reemplaza
-por geocodificacion real o coordenadas oficiales.
+**Paraderos:** se usa el centroide aproximado de cada comuna de la Región
+Metropolitana (mapa de 48 comunas) más un *jitter* determinístico de ~1 km
+derivado de SHA-256. Es data base para desarrollo; en producción se reemplaza
+por geocodificación real.
 
-**Opciones utiles**
+**Opciones útiles**
 
 ```bash
 python manage.py seed_conatacoch --skip-paraderos
 python manage.py seed_conatacoch --skip-usuarios
 python manage.py seed_conatacoch --data-file /ruta/otro.json
 python manage.py seed_conatacoch --tarifa-urbana 1200 --tarifa-rural 1800
+python manage.py seed_carga --conductores 50    # flota sintética para carga
 ```
-
-**Ubicacion del dataset:** en Docker se copia a
-`/app/data/recorridos_conatacoch_taxi_colectivo_2.json` durante el build
-(imagen inmutable). Se puede sobreescribir con `SEED_DATA_FILE`.
-
-> Nota: el archivo `recorridos_conatacoch_taxi_colectivo_2.json` se incorporo a
-> la raiz del proyecto a partir del dataset oficial disponible en el entorno.
 
 ---
 
@@ -707,13 +720,13 @@ python manage.py seed_conatacoch --tarifa-urbana 1200 --tarifa-rural 1800
 
 ### 9.1 Backend sin estado
 
-| Requisito stateless | Implementacion |
+| Requisito stateless | Implementación |
 |---|---|
 | Sesiones no locales | `SESSION_ENGINE` en MySQL |
-| Auth API | JWT firmado; no hay sesion de servidor |
-| Archivos subidos | No existen en Fase 1; media iria a S3/Blob en F2 |
+| Auth API | JWT firmado; no hay sesión de servidor |
+| Archivos subidos | No existen; media iría a S3/Blob |
 | Logs | `stdout` (Docker logging driver) |
-| Configuracion | Variables de entorno |
+| Configuración | Variables de entorno |
 | Filesystem | Contenedor `read_only: true` + `tmpfs /tmp` |
 | Seed/migraciones | Al arranque, idempotentes |
 | Balanceo | Nginx con `resolver 127.0.0.11` re-resuelve `backend` |
@@ -724,7 +737,7 @@ python manage.py seed_conatacoch --tarifa-urbana 1200 --tarifa-rural 1800
 docker compose up -d --scale backend=3
 ```
 
-Nginx descubre las IPs nuevas via DNS de Docker gracias a:
+Nginx descubre las IPs nuevas vía DNS de Docker:
 
 ```nginx
 resolver 127.0.0.11 valid=10s ipv6=off;
@@ -732,7 +745,7 @@ set $backend_upstream http://backend:8000;
 proxy_pass $backend_upstream;
 ```
 
-No se requiere *sticky session* ni afinidad de sesion.
+No se requiere *sticky session* ni afinidad de sesión.
 
 ### 9.2 Capacidad de conexiones
 
@@ -740,95 +753,144 @@ No se requiere *sticky session* ni afinidad de sesion.
 conexiones ≈ replicas_backend × GUNICORN_WORKERS × GUNICORN_THREADS
 ```
 
-| Replicas | Workers | Threads | Conexiones aprox. | MySQL `max_connections=300` |
+| Réplicas | Workers | Threads | Conexiones aprox. | MySQL `max_connections=300` |
 |---|---|---|---|---|
 | 1 | 3 | 4 | 12 | 4 % |
 | 3 | 3 | 4 | 36 | 12 % |
 | 8 | 3 | 4 | 96 | 32 % |
 
-Dejar al menos 30 % de holgura para migraciones, admin y monitoreo. Si se
-supera, aumentar `max_connections` o usar un pooler (ProxySQL) en Fase 2.
-
 ### 9.3 Estrategia por capa
 
-| Capa | Ahora (F1) | Siguiente |
+| Capa | Ahora | Siguiente |
 |---|---|---|
-| Web/API | Nginx + N replicas Gunicorn | HPA/autoescalado, CDN, WAF |
-| MySQL | Un primary con indices | Read replicas para reportes, particion de `transaccion_pago` por fecha |
-| Mongo | Atlas replica set + TTL | Sharding por `folio_linea`, *time series collection* |
-| Cache | Sin cache | Redis para tarifas/recorridos y rate limit distribuido |
-| Asincronia | Sin colas | Celery/SQS para pagos, notificaciones y reconciliacion |
-| Seed | Al arrancar | Job de despliegue separado en multi-replica |
-
-> El seed y las migraciones deben ejecutarse **una vez** por despliegue
-> (job/init container) cuando haya muchas replicas. En Compose de Fase 1 se
-> ejecutan en el unico backend; con `--scale backend=N` conviene desactivar
-> `SEED_ON_START` y correrlas como paso previo.
+| Web/API | Nginx + N réplicas Gunicorn | HPA/autoescalado, CDN, WAF |
+| MySQL | Un primary con índices | Read replicas, partición de `transaccion_pago` |
+| Mongo | Atlas replica set + TTL | Sharding por `folio_linea`, time series |
+| Cache | Sin cache | Redis para tarifas/recorridos y rate limit |
+| Asincronía | Sin colas | Celery/SQS para pagos y notificaciones |
+| Mobile | Polling cada 5–12 s | Push notifications / WebSocket |
 
 ---
 
 ## 10. Seguridad
 
-| Control | Implementacion |
+| Control | Implementación |
 |---|---|
-| Password hashing | PBKDF2-SHA256 de Django (`password_hash`, nunca texto plano) |
-| JWT | `HS256` con `JWT_SECRET` independiente de `SECRET_KEY`; access 60 min, refresh 7 dias, rotacion |
-| Autorizacion | Lectura publica solo de lineas/paraderos/stats; flota y pagos requieren JWT |
+| Password hashing | **Argon2id** (`hash_password_argon2id`) con rehash transparente; PBKDF2 legacy soportado |
+| JWT | `HS256` con `JWT_SECRET`; **access 15 min**, refresh 7 días, rotación |
+| Autorización | RBAC: `EsAdmin`, `EsConductor`, `EsCliente`, `PuedeIniciarTurno`, `EsAdminOPropietarioRecurso` |
+| Fuerza bruta | 5 intentos fallidos → bloqueo 15 min (`intentos_fallidos`, `bloqueado_hasta`) |
+| OTP | 6 dígitos, cifrado Fernet (AES + HMAC), expiración configurable, un solo uso |
+| Token de sesión | Solo hash SHA-256 en `token_sesion_activa` |
+| Anti-spoofing GPS | Haversine + `calcular_velocidad_kmh`; rechaza > 130 km/h con HTTP 422 |
+| Validación de entrada | Serializers DRF; RUT/patente con dígito verificador |
+| Pagos | UUID único, monto > 0, estado controlado, `PROTECT` en FKs |
 | Throttling | `AnonRateThrottle 60/min`, `UserRateThrottle 600/min` |
-| Fuerza bruta | Campos `intentos_fallidos` y `bloqueado_hasta` + metodos de bloqueo |
-| RUT / patente | Validadores de digito verificador y formato |
-| OTP | Cifrado Fernet (AES + HMAC), columna `otp_secreto` |
-| Token de sesion | Solo hash SHA-256 en `token_sesion_activa` |
 | Secretos | `.env` fuera de Git; `.env.example` como contrato |
 | Contenedor | Usuario `appuser` UID 10001, `read_only`, `tmpfs`, sin privilegios |
-| BD expuesta | MySQL solo en red interna en produccion; puerto local desactivable |
 | Cabeceras | `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
 | ORM | Consultas parametrizadas; sin SQL concatenado |
-| Documentacion | Swagger self-hosted (sin CDN externo) |
+| Mobile | `EncryptedSharedPreferences`; logs sin tokens; tráfico claro solo en dev |
 
-**Checklist antes de produccion**
+**Tabla de endpoints y permisos (Fase 2 + Fase 3)**
+
+| Método | Endpoint | Permiso | Descripción |
+|---|---|---|---|
+| POST | `/api/auth/login/` | Público | Login Argon2id + anti-fuerza bruta |
+| POST | `/api/auth/refresh/` | Público | Renovar access token |
+| GET | `/api/lineas/` | Público | Catálogo de recorridos |
+| GET | `/api/paraderos/` | Público | Paraderos por línea/comuna |
+| GET | `/api/vehiculos/` | JWT | Flota |
+| GET | `/api/conductores/` | JWT | Conductores |
+| GET | `/api/transacciones/` | JWT | Pagos y estados |
+| GET | `/api/telemetria/flota/` | JWT | Última posición de la flota en turno |
+| POST | `/api/eta/calcular/` | Cliente | ETA y opciones cercanas |
+| POST | `/api/telemetria/enviar/` | Conductor | Ingesta GPS anti-spoofing |
+| POST | `/api/conductor/iniciar-turno/` | Conductor | OTP de inicio de turno |
+| POST | `/api/conductor/finalizar-turno/` | Conductor | OTP de cierre de turno |
+| GET | `/api/conductor/perfil/` | Conductor | Perfil, vehículo y línea |
+| POST | `/api/conductor/cupos/` | Conductor | Actualizar cupos disponibles |
+| POST | `/api/pagos/qr/` | Cliente | Crear pago QR |
+| POST | `/api/pagos/confirmar/` | Conductor | Confirmar pago QR |
+| GET | `/api/admin-api/conductores/` | Admin | Listado de conductores |
+| POST | `/api/admin-api/conductores/registro/` | Admin | Alta de conductor |
+| POST | `/api/admin-api/conductores/completo/` | Admin | Alta usuario + vehículo + conductor |
+| GET/PATCH/DELETE | `/api/admin-api/conductores/<id>/` | Admin | Detalle, edición y baja |
+| POST | `/api/admin-api/lineas/` | Admin | Crear/actualizar línea |
+| POST | `/api/admin-api/lineas/upsert/` | Admin | Upsert idempotente de línea |
+| POST | `/api/admin-api/tarifas/` | Admin | Actualizar tarifa |
+| GET | `/api/health/`, `/api/health/live/` | Público | Readiness / liveness |
+| GET | `/api/stats/` | Público | Agregados del panel |
+
+**Checklist antes de producción**
 
 - [ ] Rotar las 5 passwords demo y eliminar usuarios de prueba.
 - [ ] Generar `SECRET_KEY` y `JWT_SECRET` de 64+ caracteres.
 - [ ] `DEBUG=False`, `SECURE_SSL_REDIRECT=True`, cookies `Secure`.
 - [ ] TLS en el load balancer y `CSRF_TRUSTED_ORIGINS` con el dominio real.
-- [ ] Eliminar la publicacion del puerto 3306 de `db_mysql`.
-- [ ] Restringir Atlas por IP/VPC y usar usuario con privilegios minimos.
+- [ ] Eliminar la publicación del puerto 3306 de `db_mysql`.
+- [ ] Restringir Atlas por IP/VPC y usar usuario con privilegios mínimos.
 - [ ] Configurar backups de MySQL y snapshots de Atlas.
 - [ ] Centralizar logs y alertas de `/api/health/`.
-
-> Nota: `ROTATE_REFRESH_TOKENS=True` pero `BLACKLIST_AFTER_ROTATION=False`
-> porque la app de blacklist no se instala en Fase 1. En Fase 2 se agrega
-> `rest_framework_simplejwt.token_blacklist` para revocacion inmediata.
 
 ---
 
 ## 11. API REST
 
-Documentacion interactiva: **`/api/docs/`** (Swagger) y **`/api/redoc/`**.
+Documentación interactiva: **`/api/docs/`** (Swagger) y **`/api/redoc/`**.
 Esquema: **`/api/schema/`** (OpenAPI 3).
 
-| Metodo | Endpoint | Auth | Descripcion |
+### 11.1 Fase 1 — lectura y salud
+
+| Método | Endpoint | Auth | Descripción |
 |---|---|---|---|
-| GET | `/api/health/live/` | Publico | Liveness |
-| GET | `/api/health/` | Publico | Readiness MySQL + Mongo |
-| GET | `/api/stats/` | Publico | Agregados para el panel |
-| GET | `/api/lineas/` | Publico | Recorridos; filtros `comuna`, `folio`, `region`, `tipo_servicio`, `search` |
-| GET | `/api/lineas/{id}/` | Publico | Detalle de recorrido |
-| GET | `/api/paraderos/` | Publico | Filtros `comuna`, `linea` |
+| GET | `/api/health/live/` | Público | Liveness |
+| GET | `/api/health/` | Público | Readiness MySQL + Mongo |
+| GET | `/api/stats/` | Público | Agregados para el panel |
+| GET | `/api/lineas/` | Público | Filtros `comuna`, `folio`, `region`, `tipo_servicio`, `search` |
+| GET | `/api/lineas/{id}/` | Público | Detalle de recorrido |
+| GET | `/api/paraderos/` | Público | Filtros `comuna`, `linea` |
 | GET | `/api/vehiculos/` | JWT | Flota; filtro `linea` |
 | GET | `/api/conductores/` | JWT | Conductores; filtros `en_turno`, `folio` |
-| GET | `/api/transacciones/` | JWT | Pagos; filtros `estado`, `conductor`, `linea`, `pasajero`, `desde`, `hasta` |
-| POST | `/api/token/` | Publico | Obtener access + refresh |
-| POST | `/api/token/refresh/` | Publico | Renovar access |
-| POST | `/api/token/verify/` | Publico | Verificar token |
-| GET | `/api/docs/` | Publico | Swagger UI |
-| GET | `/admin/` | Staff | Django Admin |
+| GET | `/api/transacciones/` | JWT | Pagos; filtros `estado`, `conductor`, `linea`, `pasajero`, `desde`, `hasta`, `search` |
+| POST | `/api/token/` | Público | Access + refresh (compatibilidad) |
+| POST | `/api/token/refresh/` | Público | Renovar access |
+| POST | `/api/token/verify/` | Público | Verificar token |
 
-### Ejemplo de autenticacion
+### 11.2 Fase 2 — operación segura
+
+| Método | Endpoint | Auth | Request / Response |
+|---|---|---|---|
+| POST | `/api/auth/login/` | Público | `{email, password}` → `{access, refresh, usuario, access_expires_in}` |
+| POST | `/api/auth/refresh/` | Público | `{refresh}` → `{access}` |
+| POST | `/api/admin-api/conductores/registro/` | Admin | Alta de conductor con usuario y vehículo |
+| GET | `/api/admin-api/conductores/` | Admin | Listado paginado con búsqueda |
+| POST | `/api/admin-api/lineas/` | Admin | Crear/actualizar línea |
+| POST | `/api/admin-api/tarifas/` | Admin | `{linea_id, tarifa}` |
+| POST | `/api/eta/calcular/` | Cliente | `{linea_id, latitud_pasajero, longitud_pasajero}` → opciones con ETA |
+| POST | `/api/telemetria/enviar/` | Conductor | `{latitud, longitud, velocidad_kmh, rumbo, cupos_disponibles, timestamp}` |
+| POST | `/api/conductor/iniciar-turno/` | Conductor | `{solicitar_codigo:true}` → `{estado, codigo_otp, expires_in_minutes}`; luego `{codigo_otp}` |
+| POST | `/api/conductor/cupos/` | Conductor | `{cupos_disponibles}` |
+| POST | `/api/pagos/qr/` | Cliente | `{conductor_id, linea_id, monto}` → `{codigo_qr_uuid, estado, monto, ...}` |
+| POST | `/api/pagos/confirmar/` | Conductor | `{codigo_qr_uuid}` → pago `PAGADO` |
+
+### 11.3 Fase 3 — soporte de interfaces
+
+| Método | Endpoint | Auth | Descripción |
+|---|---|---|---|
+| GET | `/api/telemetria/flota/` | JWT | Última posición de cada conductor en turno; filtro `linea_id` |
+| GET | `/api/conductor/perfil/` | Conductor | Perfil, vehículo, línea y cupos |
+| POST | `/api/conductor/finalizar-turno/` | Conductor | OTP de cierre y limpieza de sesión de turno |
+| POST | `/api/admin-api/conductores/completo/` | Admin | Alta transaccional usuario + vehículo + conductor |
+| GET | `/api/admin-api/conductores/<id>/` | Admin | Detalle administrativo |
+| PATCH | `/api/admin-api/conductores/<id>/` | Admin | Edición parcial |
+| DELETE | `/api/admin-api/conductores/<id>/` | Admin | Baja con protección de referencias |
+| POST | `/api/admin-api/lineas/upsert/` | Admin | Alta/actualización idempotente por clave natural |
+
+### Ejemplo de autenticación
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8080/api/token/ \
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login/ \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@conatacoch.cl","password":"AdminConata2026!"}' \
   | python -c "import sys,json; print(json.load(sys.stdin)['access'])")
@@ -841,47 +903,185 @@ PowerShell:
 
 ```powershell
 $body = @{ email="admin@conatacoch.cl"; password="AdminConata2026!" } | ConvertTo-Json
-$token = (Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/token/" `
+$token = (Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/auth/login/" `
   -ContentType "application/json" -Body $body).access
 Invoke-RestMethod -Uri "http://localhost:8080/api/conductores/" `
   -Headers @{ Authorization = "Bearer $token" }
 ```
 
-### Paginacion
+### Paginación
 
-`?page=2&page_size=50` (maximo 100). Respuesta estandar DRF:
+`?page=2&page_size=50` (máximo 100). Respuesta estándar DRF:
 `count`, `next`, `previous`, `results`.
-
-### Ejemplo de health
-
-```json
-{
-  "status": "ok",
-  "service": "conatacoch-backend",
-  "version": "1.0.0-fase1",
-  "components": {
-    "mysql": { "status": "ok", "latency_ms": 1.42, "database": "conatacoch" },
-    "mongodb": { "status": "ok", "latency_ms": 35.1, "mode": "atlas",
-                 "database": "telemetria_ubicacion" }
-  }
-}
-```
-
-Si Atlas no responde, `status` es `degraded` y el HTTP sigue en 200 para no
-matar el servicio por una dependencia no critica de Fase 1.
 
 ---
 
-## 12. Operacion y troubleshooting
+## 12. Panel web mobile-first
 
-### Comandos utiles
+`web-admin/` es una SPA sin build step servida por Nginx. Se ve como una app de
+teléfono centrada en escritorio y a pantalla completa en móvil.
+
+**Paleta estricta**
+
+```css
+--cona-black:  #0B0B0B;
+--cona-white:  #FFFFFF;
+--cona-yellow: #FFD100;
+```
+
+No se usan otros colores: los grises son transparencias del blanco.
+
+**Vistas**
+
+| Vista | Funcionalidad |
+|---|---|
+| Login | Email + password, detección automática de rol, verificación de API |
+| Pasajero | Búsqueda de recorridos, mapa Leaflet, ETA, cupos, pago QR en 2 toques |
+| Conductor | Modo oscuro, inicio/cierre de turno con OTP, cupos, GPS periódico, alerta de pago QR |
+| Administrador | CRUD de conductores, líneas, tarifas, flota en vivo y auditoría de pagos QR |
+| Cuenta | Identidad, rol y cierre de sesión |
+
+**Catálogo oficial:** `web-admin/assets/recorridos_conatacoch.json` contiene las
+660 filas del dataset. El panel resuelve el `linea_id` de la base vía
+`/api/lineas/?folio=...`, de modo que el catálogo y la API siempre coinciden.
+
+**Ejecución local del panel**
+
+```bash
+# Servir estáticos y proxear /api al backend
+docker compose up -d web_admin
+# o sin Docker, con cualquier servidor estático + proxy
+```
+
+---
+
+## 13. App Android
+
+`android-app/` es una app nativa **Kotlin + Jetpack Compose + Material 3**
+organizada con **MVVM + Clean Architecture**.
+
+| Capa | Contenido |
+|---|---|
+| `ui` | `LoginScreen`, `PassengerScreen`, `DriverScreen`, `AdminScreen`, tema y componentes |
+| `domain` | Modelos (`User`, `Linea`, `EtaResult`, `QrPayment`, ...) y contratos de repositorio |
+| `data` | `ApiService` Retrofit, DTOs, mappers y repositorios |
+| `core` | Sesión cifrada, JWT, red, GPS, QR, feedback sonoro/vibración |
+
+**Pantallas obligatorias cubiertas**
+
+- Login unificado con detección de rol y campo OTP.
+- Pasajero: mapa OSMDroid, ETA, cupos y pago QR en dos toques.
+- Conductor: pantalla oscura de alto contraste, botones grandes, OTP de turno,
+  cambio de asiento, GPS periódico y alerta visual/sonora de pago QR
+  (`ToneGenerator`).
+- Administrador: identidad y accesos al panel web.
+
+**Configuración de API**
+
+```properties
+# android-app/gradle.properties
+CONATACOCH_API_BASE_URL=http://10.0.2.2:8000/api/
+```
+
+| Entorno | URL |
+|---|---|
+| Emulador + backend local | `http://10.0.2.2:8000/api/` |
+| Dispositivo en LAN | `http://<IP-del-PC>:8000/api/` |
+| Producción | `https://<dominio>/api/` |
+
+**Compilar**
+
+```powershell
+cd android-app
+.\gradlew.bat :app:assembleDebug
+# APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+Instrucciones completas en [`android-app/README.md`](android-app/README.md).
+
+---
+
+## 14. Pruebas, métricas y validación
+
+### 14.1 Suite automatizada
+
+```bash
+cd backend
+python -m pytest tests/ -q --tb=short
+```
+
+Resultado de la última ejecución:
+
+```text
+64 passed
+```
+
+Cobertura funcional:
+
+- Seed completo e **idempotente** (660 líneas, 0 duplicados).
+- 5 usuarios, 2 vehículos, 2 conductores; passwords verificados.
+- Login Argon2id, bloqueo tras intentos fallidos, refresh JWT.
+- RBAC: 401/403 por rol en endpoints protegidos.
+- OTP de turno: solicitud, validación, expiración y cierre.
+- Telemetría GPS: inserción GeoJSON, rechazo anti-spoofing, cupos.
+- ETA: cálculo Haversine y ordenamiento por cercanía.
+- Pago QR: creación, confirmación, estados y auditoría.
+- CRUD admin de conductores y líneas.
+- `PROTECT` impide borrar una línea referenciada.
+- Health público y `degraded` cuando Mongo no responde.
+- OpenAPI y Swagger responden 200.
+
+### 14.2 Pruebas de carga (Fase 2)
+
+Entorno: SQLite + `MONGO_MOCK=1`, servidor de desarrollo Django, cliente HTTP
+concurrente. Las latencias incluyen el cliente y el GIL de Python, por lo que
+son una **cota conservadora**.
+
+| Escenario | Concurrencia | Éxitos | Promedio | p95 | p99 | Throughput |
+|---|---|---|---|---|---|---|
+| Telemetría GPS | 50 | 50/50 | **400.62 ms** | 1053.99 ms | 1058.00 ms | **44.70 req/s** |
+| ETA pasajeros | 100 | 100/100 | **936.55 ms** | 1605.93 ms | 1662.52 ms | **55.86 req/s** |
+| Login (150 usuarios) | 150 | 150/150 | — | — | — | 14.243 s total |
+
+**Validaciones adicionales de la carga**
+
+- 50 vehículos distintos detectados en 50 envíos GPS (`validacion_vehiculos_unicos: true`).
+- 100 respuestas ETA con opciones (mínimo y máximo 50 opciones por respuesta).
+- 0 errores HTTP en ambos escenarios.
+
+Métricas crudas: `carga_metrics.json` (generado por `backend/tests/bench_baseline.py`).
+
+### 14.3 Validación de build Android
+
+```text
+.\gradlew.bat :app:assembleDebug --no-daemon --console=plain
+BUILD SUCCESSFUL in 4m 18s
+37 actionable tasks: 37 executed
+APK: app/build/outputs/apk/debug/app-debug.apk (11.5 MB)
+```
+
+### 14.4 Otras validaciones
+
+```text
+manage.py check                              -> 0 issues
+manage.py makemigrations --check             -> sin cambios pendientes
+manage.py spectacular --validate             -> schema válido
+node --check web-admin/assets/app.js         -> OK
+Parser XML de recursos Android               -> OK
+```
+
+---
+
+## 15. Operación y troubleshooting
+
+### Comandos útiles
 
 ```bash
 docker compose ps
 docker compose logs -f backend
 docker compose exec backend python manage.py seed_conatacoch
 docker compose exec backend python manage.py init_mongo_indexes
-docker compose exec backend python manage.py test core
+docker compose exec backend python -m pytest tests/ -q
 docker compose exec db_mysql mysql -uconatacoch -p conatacoch -e "SHOW TABLES;"
 docker compose --profile mongo-local exec mongo_local mongosh
 ```
@@ -893,21 +1093,23 @@ docker compose down -v
 docker compose --profile mongo-local up -d --build
 ```
 
-`-v` elimina los volumenes `conatacoch_mysql_data` y
-`conatacoch_mongo_data`. No usar en produccion.
+`-v` elimina los volúmenes `conatacoch_mysql_data` y
+`conatacoch_mongo_data`. No usar en producción.
 
 ### Problemas frecuentes
 
-| Sintoma | Causa probable | Solucion |
+| Síntoma | Causa probable | Solución |
 |---|---|---|
-| Panel muestra MongoDB `degraded` | Atlas vacio y perfil local no iniciado | Configurar `MONGO_ATLAS_URI` o usar `--profile mongo-local` |
-| `502 Bad Gateway` en panel | Backend aun arrancando/migrando | `docker compose logs -f backend`, esperar healthcheck |
+| Panel muestra MongoDB `degraded` | Atlas vacío y perfil local no iniciado | Configurar `MONGO_ATLAS_URI` o usar `--profile mongo-local` |
+| `502 Bad Gateway` en panel | Backend aún arrancando/migrando | `docker compose logs -f backend`, esperar healthcheck |
 | `port is already allocated` | Puerto 8080/3306 ocupado | Cambiar `WEB_ADMIN_PORT`/`MYSQL_EXPOSED_PORT` en `.env` |
 | Backend reinicia en loop | Credenciales MySQL incorrectas o DB no lista | Revisar `.env`, `docker compose logs db_mysql` |
-| `/api/docs/` sin estilos | Falta `collectstatic` en imagen | Reconstruir (`--build`); en local usar `DEBUG=True` |
-| Acentos rotos | Cliente sin UTF-8 | MySQL ya usa `utf8mb4`; revisar terminal/cliente |
-| TTL no borra documentos | Monitor TTL corre cada ~60 s o indice ausente | Ejecutar `init_mongo_indexes`; esperar |
-| Seed lento en MySQL | 660 lineas + 1.320 paraderos | Normal en primer arranque; usar `--skip-paraderos` en pruebas |
+| `/api/docs/` sin estilos | Falta `collectstatic` en imagen | Reconstruir (`--build`) |
+| App Android no conecta | URL de API incorrecta | Ajustar `CONATACOCH_API_BASE_URL` (`10.0.2.2` en emulador) |
+| Mapa Android vacío | Sin red o tiles bloqueados | Verificar conexión; OSMDroid usa Carto/OSM |
+| QR no se dibuja | ZXing no pudo codificar | Revisar UUID y tamaño; regenerar pago |
+| TTL no borra documentos | Monitor TTL corre cada ~60 s o índice ausente | Ejecutar `init_mongo_indexes`; esperar |
+| Seed lento en MySQL | 660 líneas + 1.320 paraderos | Normal en primer arranque; usar `--skip-paraderos` en pruebas |
 
 ### Backups
 
@@ -915,99 +1117,49 @@ docker compose --profile mongo-local up -d --build
 # MySQL
 docker compose exec db_mysql mysqldump -uconatacoch -p conatacoch > backup.sql
 
-# Atlas: snapshots continuos del cluster gestionado (consola/Atlas CLI)
+# Atlas: snapshots continuos del cluster gestionado
 ```
 
 ---
 
-## 13. Pruebas y validacion
-
-Suite: `backend/core/tests.py` (11 pruebas).
-
-```bash
-docker compose exec backend python manage.py test core
-```
-
-Resultado de la validacion ejecutada en esta entrega (Python 3.12 + SQLite):
-
-```text
-Ran 11 tests in 7.799s
-OK
-```
-
-Cobertura:
-
-- Seed completo y **segunda ejecucion idempotente** (660 lineas, 0 duplicados).
-- 5 usuarios, 2 vehiculos, 2 conductores; passwords verificados.
-- OTP descifrable y token de sesion vacio/hasheado.
-- RUT invalido rechazado.
-- `PROTECT` impide borrar una linea referenciada.
-- Health publico y `degraded` cuando Mongo no responde.
-- Stats publicas (660 lineas, 396 folios, 48 comunas).
-- Filtro publico de recorridos y paginacion.
-- Flota protegida por JWT (401 sin token, 200 con token).
-- Secretos no expuestos en el serializer de conductores.
-- OpenAPI y Swagger responden 200.
-
-Validacion adicional ejecutada:
-
-```text
-manage.py check                              -> 0 issues
-manage.py makemigrations --check             -> sin cambios pendientes
-manage.py spectacular --validate             -> schema valido
-manage.py collectstatic --noinput            -> 655 archivos
-docker-compose.yml (YAML)                    -> parseo correcto, 4 servicios
-admin (login + listados)                     -> 302 a /admin/ y paginas 200
-```
-
-> **Nota de validacion:** el entorno donde se preparo esta entrega no dispone de
-> Docker, por lo que `docker-compose.yml` se valido como YAML y sus servicios se
-> revisaron estaticamente, pero **no se ejecuto `docker compose up` aqui**. En
-> la maquina destino ejecutar el inicio rapido de la seccion 4 y el checklist de
-> la seccion 6 de `docs/despliegue.md`.
-
----
-
-## 14. Trazabilidad con la rubrica
+## 16. Trazabilidad con la rúbrica
 
 | Criterio | Evidencia |
 |---|---|
-| **Estructura adecuada de la BD** | 6 entidades normalizadas, FK, `CHECK`, migracion versionada |
-| **Optimizacion y normalizacion (3FN)** | Justificacion 3FN, indices B-Tree compuestos, clave natural validada |
+| **Estructura adecuada de la BD** | 6 entidades normalizadas, FK, `CHECK`, migración versionada |
+| **Optimización y normalización (3FN)** | Justificación 3FN, índices B-Tree compuestos, clave natural validada |
 | **Bases de datos en la nube** | MongoDB Atlas con TLS, pool PyMongo, `2dsphere`, TTL 4 h |
-| **Patrones de seguridad** | JWT, PBKDF2, throttling, Fernet, hash de token, contenedor non-root/read-only |
-| **Entorno Docker** | Compose con 4 servicios, healthchecks, volumenes, red, `python:3.12-slim` |
-| **Configuracion del entorno** | `.env.example` completo, entrypoint idempotente, guia paso a paso |
-| **Documentacion de implementacion** | README 4+1 + `docs/` + Swagger + docstrings |
-| **Cobertura de pruebas** | 11 pruebas automatizadas + smoke test de seed/JWT |
-| **Ejecucion de pruebas** | `manage.py test core` => OK |
-| **Validacion de resultados** | Conteos 660/1.320/5/2, health y OpenAPI verificados |
-| **Interfaces** | Panel responsive + Swagger + Django Admin |
+| **Patrones de seguridad** | Argon2id, JWT, RBAC, OTP Fernet, anti-spoofing, throttling, contenedor non-root |
+| **Entorno Docker** | Compose con 4 servicios, healthchecks, volúmenes, red, `python:3.12-slim` |
+| **Configuración del entorno** | `.env.example` completo, entrypoint idempotente, guía paso a paso |
+| **Documentación de implementación** | README 4+1 + `docs/` + Swagger + docstrings |
+| **Cobertura de pruebas** | 64 pruebas automatizadas + pruebas de carga concurrentes |
+| **Ejecución de pruebas** | `pytest` → 64 passed |
+| **Validación de resultados** | Conteos 660/1.320/5/2, health, OpenAPI y build Android |
+| **Interfaces** | Panel web mobile-first + app Android + Swagger + Django Admin |
+| **Trabajo colaborativo** | Ramas por integrante y comandos documentados en `docs/GUIA_EVIDENCIAS_Y_GIT.md` |
 
 ---
 
-## 15. Roadmap Fases 2 y 3
+## 17. Evidencias y Git
 
-**Fase 2 — Operacion en tiempo real**
+La guía completa de capturas, tabla de evidencias y comandos Git por rama está
+en:
 
-- App Android para conductores y pasajeros.
-- Endpoint `POST /api/telemetria/` con validacion y escritura en Mongo.
-- WebSocket/SSE para mapa de vehiculos y cupos en vivo.
-- Turnos, cupos y bloqueo por intentos conectados al login real.
-- Redis para cache y throttling distribuido.
+**[`docs/GUIA_EVIDENCIAS_Y_GIT.md`](docs/GUIA_EVIDENCIAS_Y_GIT.md)**
 
-**Fase 3 — Pagos y analitica**
+Incluye:
 
-- Generacion y validacion de QR con `codigo_qr_uuid`.
-- Conciliacion de pagos, reembolsos y estados.
-- Reporteria por linea/conductor y tableros analiticos.
-- Particionamiento/tablas historicas y read replicas.
-- Observabilidad (Prometheus/Grafana, trazas) y CI/CD completo.
+- Tabla de capturas para cada `[POR COMPLETAR]` del informe.
+- Comandos para las ramas de **Heiner Sepúlveda**, **Vicente Macaya** y
+  **Félix Escobar**.
+- Flujo de Pull Request, protección de `main` y publicación en GitHub.
+- Checklist final de entrega.
 
 ---
 
-## Creditos
+## Créditos
 
-Proyecto academico **CONATACOCH** — Plataforma de Taxis y Colectivos de Chile.
-Disenado bajo el Modelo 4+1, con persistencia poliglota MySQL 8 + MongoDB
-Atlas y despliegue Docker reproducible.
+Proyecto académico **CONATACOCH** — Plataforma de Taxis y Colectivos de Chile.
+Diseñado bajo el Modelo 4+1, con persistencia poliglota MySQL 8 + MongoDB Atlas,
+panel web mobile-first y app Android nativa.

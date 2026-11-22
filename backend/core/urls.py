@@ -27,6 +27,14 @@ from core.views_fase2 import (
     PagoQRView,
     TelemetriaEnviarView,
 )
+from core.views_fase3 import (
+    AdminConductorCreateCompletoView,
+    AdminConductorDetailView,
+    AdminLineaUpsertView,
+    ConductorFinalizarTurnoView,
+    ConductorPerfilView,
+    FlotaEnVivoView,
+)
 
 router = DefaultRouter()
 router.register("lineas", LineaColectivaViewSet, basename="linea")
@@ -79,4 +87,32 @@ urlpatterns += [
     path("conductor/iniciar-turno/", ConductorIniciarTurnoView.as_view(), name="conductor-iniciar-turno"),
     path("conductor/cupos/", ConductorCuposView.as_view(), name="conductor-cupos"),
     path("pagos/confirmar/", PagoConfirmarView.as_view(), name="pago-confirmar"),
+]
+
+# ---------------------------------------------------------------------------
+# Endpoints aditivos de Fase 3 (soporte de mapas, cierre de turno y CRUD admin)
+# ---------------------------------------------------------------------------
+urlpatterns += [
+    path("telemetria/flota/", FlotaEnVivoView.as_view(), name="telemetria-flota"),
+    path("conductor/perfil/", ConductorPerfilView.as_view(), name="conductor-perfil"),
+    path(
+        "conductor/finalizar-turno/",
+        ConductorFinalizarTurnoView.as_view(),
+        name="conductor-finalizar-turno",
+    ),
+    path(
+        "admin-api/conductores/completo/",
+        AdminConductorCreateCompletoView.as_view(),
+        name="admin-conductor-completo",
+    ),
+    path(
+        "admin-api/conductores/<int:pk>/",
+        AdminConductorDetailView.as_view(),
+        name="admin-conductor-detail",
+    ),
+    path(
+        "admin-api/lineas/upsert/",
+        AdminLineaUpsertView.as_view(),
+        name="admin-linea-upsert",
+    ),
 ]

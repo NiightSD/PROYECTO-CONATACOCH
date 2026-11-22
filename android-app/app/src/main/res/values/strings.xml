@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">CONATACOCH</string>
+    <string name="app_tagline">Taxis y colectivos de Chile</string>
+
+    <string name="login_title">Muévete en amarillo</string>
+    <string name="login_subtitle">Un solo acceso para pasajeros, conductores y administración.</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Contraseña</string>
+    <string name="login_otp">Código OTP de turno (conductores)</string>
+    <string name="login_otp_help">Opcional. Si eres conductor puedes activar tu turno al ingresar.</string>
+    <string name="login_action">Entrar</string>
+    <string name="login_demo">Credenciales demo</string>
+
+    <string name="passenger_title">¿Dónde vas?</string>
+    <string name="passenger_search">Buscar folio, comuna o recorrido</string>
+    <string name="passenger_eta">ETA más cercano</string>
+    <string name="passenger_fleet">Colectivos activos</string>
+    <string name="passenger_pay">Pagar con QR</string>
+    <string name="passenger_pay_confirm">Confirmar pago</string>
+    <string name="passenger_no_route">Selecciona un recorrido para ver la flota y el ETA.</string>
+
+    <string name="driver_title">Tu turno</string>
+    <string name="driver_start">Iniciar turno</string>
+    <string name="driver_finish">Finalizar turno</string>
+    <string name="driver_gps_on">GPS activo</string>
+    <string name="driver_gps_off">GPS apagado</string>
+    <string name="driver_seats">Asientos</string>
+    <string name="driver_available">Disponible</string>
+    <string name="driver_full">Lleno</string>
+    <string name="driver_pending">Pagos QR pendientes</string>
+
+    <string name="logout">Cerrar sesión</string>
+    <string name="account">Cuenta</string>
+</resources>

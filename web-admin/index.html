@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#050505">
-  <meta name="description" content="CONATACOCH - Panel operativo del gremio de taxis y colectivos de Chile.">
+  <meta name="theme-color" content="#0B0B0B">
+  <meta name="description" content="CONATACOCH — App móvil de taxis y colectivos de Chile. Pasajeros, conductores y administración.">
   <title>CONATACOCH · App</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
 
-  <div class="phone">
-    <header class="app-header">
-      <a class="brand" href="#inicio" data-view-link="inicio" aria-label="CONATACOCH inicio">
-        <span class="brand-mark" aria-hidden="true">
+  <div class="phone" id="phone">
+    <!-- ================================================================ LOGIN -->
+    <section class="screen login-screen is-active" id="screen-login" aria-labelledby="login-title">
+      <header class="login-head">
+        <span class="brand-mark brand-mark-lg" aria-hidden="true">
           <svg viewBox="0 0 32 32">
             <path d="M6 20l2.2-6.4A3.4 3.4 0 0 1 11.4 11h9.2a3.4 3.4 0 0 1 3.2 2.6L26 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
             <rect x="4.5" y="19" width="23" height="6.4" rx="2.2" fill="none" stroke="currentColor" stroke-width="2.2"/>
@@ -23,320 +25,421 @@
             <circle cx="22.4" cy="25.4" r="1.7" fill="currentColor"/>
           </svg>
         </span>
-        <span class="brand-copy">
-          <strong>CONATACOCH</strong>
-          <small>Santiago · RM</small>
-        </span>
-      </a>
+        <p class="kicker">CONATACOCH · Región Metropolitana</p>
+        <h1 id="login-title">Muévete<br><span>en amarillo.</span></h1>
+        <p class="lead">Taxis y colectivos de Chile. Un solo acceso para pasajeros, conductores y administración.</p>
+      </header>
 
-      <button class="icon-btn" id="refresh-btn" type="button" aria-label="Actualizar datos" title="Actualizar">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </header>
-
-    <main class="app-main" id="app-main">
-      <!-- ============================================================ INICIO -->
-      <section class="view is-active" id="view-inicio" aria-labelledby="inicio-title">
-        <div class="welcome">
-          <p class="kicker">Panel operativo</p>
-          <h1 id="inicio-title">Todo el gremio,<br><span>en una sola app.</span></h1>
+      <form class="card form" id="login-form" novalidate>
+        <label class="field">
+          <span>Email</span>
+          <input id="login-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="tu@correo.cl" required>
+        </label>
+        <label class="field">
+          <span>Contraseña</span>
+          <span class="input-wrap">
+            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+            <button class="input-action" id="toggle-password" type="button" aria-label="Mostrar contraseña">Ver</button>
+          </span>
+        </label>
+        <p class="form-error" id="login-error" role="alert"></p>
+        <button class="btn btn-primary btn-block" id="login-submit" type="submit">Entrar</button>
+        <div class="demo-row" aria-label="Credenciales demo">
+          <button class="chip" type="button" data-demo="pasajero">Pasajero</button>
+          <button class="chip" type="button" data-demo="conductor">Conductor</button>
+          <button class="chip" type="button" data-demo="admin">Admin</button>
         </div>
+        <p class="hint" id="demo-hint">Demo pasajero: pasajero1@conatacoch.cl · Pasajero2026!</p>
+      </form>
 
-        <article class="hero-card">
-          <div class="hero-top">
-            <span class="tag">En vivo</span>
-            <span class="status" id="api-status"><span class="dot"></span><span>Verificando</span></span>
-          </div>
-          <div class="hero-value">
-            <strong id="hero-lineas">--</strong>
-            <span>recorridos<br>disponibles</span>
-          </div>
-          <div class="hero-grid">
-            <div>
-              <span class="label">Paraderos</span>
-              <strong id="hero-paraderos">--</strong>
-            </div>
-            <div>
-              <span class="label">Comunas</span>
-              <strong id="hero-comunas">--</strong>
-            </div>
-            <div>
-              <span class="label">En turno</span>
-              <strong id="hero-turno">--</strong>
-            </div>
-          </div>
-        </article>
+      <footer class="login-foot">
+        <span class="status-line"><span class="dot" id="login-api-dot"></span><span id="login-api-text">Verificando API…</span></span>
+        <a href="/api/docs/" target="_blank" rel="noopener">API</a>
+      </footer>
+    </section>
 
-        <div class="quick-grid">
-          <button class="quick" type="button" data-go="rutas">
-            <span class="quick-icon">
-              <svg viewBox="0 0 24 24"><path d="M5 19c2.5 0 2.5-14 7-14s4.5 14 7 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="19" r="2" fill="currentColor"/><circle cx="19" cy="19" r="2" fill="currentColor"/></svg>
-            </span>
-            <span>Rutas</span>
+    <!-- ================================================================== APP -->
+    <section class="screen app-screen" id="screen-app" hidden aria-label="Aplicación CONATACOCH">
+      <header class="app-header">
+        <button class="brand" id="brand-home" type="button" aria-label="Ir al inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32">
+              <path d="M6 20l2.2-6.4A3.4 3.4 0 0 1 11.4 11h9.2a3.4 3.4 0 0 1 3.2 2.6L26 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <rect x="4.5" y="19" width="23" height="6.4" rx="2.2" fill="none" stroke="currentColor" stroke-width="2.2"/>
+              <circle cx="9.6" cy="25.4" r="1.7" fill="currentColor"/>
+              <circle cx="22.4" cy="25.4" r="1.7" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <strong>CONATACOCH</strong>
+            <small id="header-role">—</small>
+          </span>
+        </button>
+        <div class="header-actions">
+          <span class="role-chip" id="role-chip">—</span>
+          <button class="icon-btn" id="logout-btn" type="button" aria-label="Cerrar sesión" title="Cerrar sesión">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M11 8l-4 4 4 4M7 12h9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="quick" type="button" data-go="flota">
-            <span class="quick-icon">
-              <svg viewBox="0 0 24 24"><path d="M4 15l1.6-4.6A3 3 0 0 1 8.4 8h7.2a3 3 0 0 1 2.8 2.4L20 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><rect x="3" y="14" width="18" height="5.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="7.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="16.5" cy="19.5" r="1.4" fill="currentColor"/></svg>
-            </span>
-            <span>Flota</span>
-          </button>
-          <a class="quick" href="/api/docs/" target="_blank" rel="noopener">
-            <span class="quick-icon">
-              <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M14 3v5h5M9 13h6M9 17h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-            </span>
-            <span>API</span>
-          </a>
-          <a class="quick" href="/admin/" target="_blank" rel="noopener">
-            <span class="quick-icon">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M5 20c.8-3.4 3.5-5.2 7-5.2s6.2 1.8 7 5.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-            </span>
-            <span>Admin</span>
-          </a>
         </div>
+      </header>
 
-        <div class="section-head">
-          <h2>Servicios</h2>
-          <button class="text-btn" type="button" data-go="mas">Ver detalle</button>
-        </div>
-
-        <div class="service-list">
-          <div class="service-row">
-            <span class="service-dot" data-service-dot="api"></span>
-            <div class="service-copy">
-              <strong>Backend API</strong>
-              <small id="api-latency">latencia --</small>
+      <main class="app-main" id="app-main">
+        <!-- ========================================================= PASAJERO -->
+        <section class="view" id="view-pasajero" data-view="pasajero" aria-labelledby="pasajero-title">
+          <div class="view-head">
+            <div>
+              <p class="kicker">Pasajero</p>
+              <h1 id="pasajero-title">¿Dónde vas?</h1>
             </div>
-            <span class="status" id="card-api"><span class="dot"></span><span>--</span></span>
-          </div>
-          <div class="service-row">
-            <span class="service-dot" data-service-dot="mysql"></span>
-            <div class="service-copy">
-              <strong>MySQL 8</strong>
-              <small id="mysql-latency">latencia --</small>
-            </div>
-            <span class="status" id="card-mysql"><span class="dot"></span><span>--</span></span>
-          </div>
-          <div class="service-row">
-            <span class="service-dot" data-service-dot="mongo"></span>
-            <div class="service-copy">
-              <strong>MongoDB</strong>
-              <small id="mongo-mode">modo --</small>
-            </div>
-            <span class="status" id="card-mongo"><span class="dot"></span><span>--</span></span>
-          </div>
-        </div>
-
-        <div class="section-head">
-          <h2>Resumen</h2>
-          <span class="meta" id="last-update">Sin actualizar</span>
-        </div>
-
-        <div class="metric-grid">
-          <article class="metric">
-            <span class="metric-label">Líneas</span>
-            <strong id="m-lineas">--</strong>
-            <small id="m-folios">-- folios</small>
-          </article>
-          <article class="metric">
-            <span class="metric-label">Paraderos</span>
-            <strong id="m-paraderos">--</strong>
-            <small>Región Metropolitana</small>
-          </article>
-          <article class="metric">
-            <span class="metric-label">Conductores</span>
-            <strong id="m-conductores">--</strong>
-            <small id="m-turno">-- en turno</small>
-          </article>
-          <article class="metric">
-            <span class="metric-label">Vehículos</span>
-            <strong id="m-vehiculos">--</strong>
-            <small>Flota registrada</small>
-          </article>
-          <article class="metric">
-            <span class="metric-label">Pasajeros</span>
-            <strong id="m-pasajeros">--</strong>
-            <small>Cuentas cliente</small>
-          </article>
-          <article class="metric metric-accent">
-            <span class="metric-label">Tarifa media</span>
-            <strong id="m-tarifa">--</strong>
-            <small>CLP por viaje</small>
-          </article>
-        </div>
-      </section>
-
-      <!-- ============================================================= RUTAS -->
-      <section class="view" id="view-rutas" aria-labelledby="rutas-title">
-        <div class="welcome compact">
-          <p class="kicker">Catálogo RM</p>
-          <h1 id="rutas-title">Rutas</h1>
-          <p class="sub">660 itinerarios oficiales de taxi colectivo, con búsqueda instantánea.</p>
-        </div>
-
-        <div class="search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-          <label class="sr-only" for="route-search">Buscar recorrido</label>
-          <input id="route-search" type="search" placeholder="Folio, comuna o recorrido" autocomplete="off">
-        </div>
-
-        <div class="route-list" id="routes-body" aria-live="polite">
-          <div class="route-card skeleton" aria-hidden="true"></div>
-          <div class="route-card skeleton" aria-hidden="true"></div>
-          <div class="route-card skeleton" aria-hidden="true"></div>
-        </div>
-
-        <div class="list-foot">
-          <span class="meta" id="routes-count">--</span>
-          <div class="pager">
-            <button class="icon-btn small" id="prev-page" type="button" aria-label="Página anterior" title="Anterior">
-              <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <span class="meta" id="page-label">Página 1</span>
-            <button class="icon-btn small" id="next-page" type="button" aria-label="Página siguiente" title="Siguiente">
-              <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <button class="icon-btn" id="passenger-refresh" type="button" aria-label="Actualizar datos" title="Actualizar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
-        </div>
-      </section>
 
-      <!-- ============================================================= FLOTA -->
-      <section class="view" id="view-flota" aria-labelledby="flota-title">
-        <div class="welcome compact">
-          <p class="kicker">Operación</p>
-          <h1 id="flota-title">Flota</h1>
-          <p class="sub">Conductores, vehículos y pasajeros conectados a la plataforma.</p>
-        </div>
-
-        <div class="stat-stack">
-          <article class="stat-card accent">
-            <span class="label">Conductores en turno</span>
-            <strong id="f-turno">--</strong>
-            <small id="f-conductores">-- registrados</small>
-          </article>
-          <article class="stat-card">
-            <span class="label">Vehículos</span>
-            <strong id="f-vehiculos">--</strong>
-            <small>Flota activa</small>
-          </article>
-          <article class="stat-card">
-            <span class="label">Pasajeros</span>
-            <strong id="f-pasajeros">--</strong>
-            <small>Cuentas cliente</small>
-          </article>
-          <article class="stat-card">
-            <span class="label">Tarifa media</span>
-            <strong id="f-tarifa">--</strong>
-            <small>CLP por viaje</small>
-          </article>
-        </div>
-
-        <div class="section-head"><h2>Estado técnico</h2></div>
-        <div class="service-list">
-          <div class="service-row">
-            <span class="service-dot" data-service-dot="api"></span>
-            <div class="service-copy"><strong>API Django</strong><small>REST · JWT · OpenAPI</small></div>
-            <span class="status" id="api-status-2"><span class="dot"></span><span>--</span></span>
+          <div class="card route-picker">
+            <label class="field">
+              <span>Recorrido CONATACOCH</span>
+              <input id="route-search" type="search" placeholder="Folio, comuna o recorrido" autocomplete="off" aria-controls="route-results">
+            </label>
+            <p class="hint" id="route-source">Catálogo oficial · 660 itinerarios</p>
+            <div class="route-results" id="route-results" role="listbox" aria-label="Resultados de recorridos"></div>
+            <article class="selected-route" id="selected-route" hidden>
+              <div class="selected-route-top">
+                <span class="folio" id="selected-folio">#—</span>
+                <span class="badge" id="selected-tipo">—</span>
+              </div>
+              <h2 id="selected-name">—</h2>
+              <p class="route-path"><span id="selected-origen">—</span><span class="arrow">→</span><span id="selected-destino">—</span></p>
+              <div class="selected-route-bottom">
+                <span id="selected-tarifa">—</span>
+                <span id="selected-comunas">—</span>
+              </div>
+            </article>
           </div>
-          <div class="service-row">
-            <span class="service-dot" data-service-dot="mysql"></span>
-            <div class="service-copy"><strong>MySQL</strong><small>Persistencia 3FN</small></div>
-            <span class="status" id="mysql-status-2"><span class="dot"></span><span>--</span></span>
-          </div>
-          <div class="service-row">
-            <span class="service-dot" data-service-dot="mongo"></span>
-            <div class="service-copy"><strong>MongoDB</strong><small>Telemetría GeoJSON</small></div>
-            <span class="status" id="mongo-status-2"><span class="dot"></span><span>--</span></span>
-          </div>
-        </div>
-      </section>
 
-      <!-- ============================================================== MÁS -->
-      <section class="view" id="view-mas" aria-labelledby="mas-title">
-        <div class="welcome compact">
-          <p class="kicker">Sistema</p>
-          <h1 id="mas-title">Más</h1>
-          <p class="sub">Arquitectura, documentación y accesos de administración.</p>
-        </div>
-
-        <div class="panel">
-          <div class="panel-row">
-            <span class="label">API</span>
-            <span class="status" id="api-status-3"><span class="dot"></span><span>Verificando</span></span>
+          <div class="map-card">
+            <div class="map" id="passenger-map" aria-label="Mapa de colectivos en vivo"></div>
+            <div class="map-overlay">
+              <span class="live-pill"><span class="pulse" aria-hidden="true"></span><span id="fleet-count">0</span> en vivo</span>
+              <button class="icon-btn small" id="locate-btn" type="button" aria-label="Usar mi ubicación" title="Mi ubicación">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="panel-row">
-            <span class="label">Base de datos</span>
-            <span class="status" id="mysql-status"><span class="dot"></span><span>Verificando</span></span>
+
+          <div class="card eta-card" id="eta-card">
+            <div class="eta-top">
+              <span class="label">ETA más cercano</span>
+              <span class="badge" id="eta-badge">Sin recorrido</span>
+            </div>
+            <div class="eta-main"><strong id="eta-value">—</strong><span id="eta-unit">min</span></div>
+            <p class="eta-meta" id="eta-meta">Selecciona un recorrido para calcular el tiempo de llegada.</p>
+            <div class="eta-options" id="eta-options"></div>
+            <button class="btn btn-primary btn-block" id="pay-btn" type="button" disabled>Pagar con QR</button>
           </div>
-          <div class="panel-row">
-            <span class="label">Telemetría</span>
-            <span class="status" id="mongo-status"><span class="dot"></span><span>Verificando</span></span>
+
+          <div class="section-head"><h2>Colectivos activos</h2><span class="meta" id="fleet-updated">—</span></div>
+          <div class="fleet-list" id="fleet-list">
+            <p class="empty">Selecciona un recorrido para ver la flota.</p>
           </div>
-          <p class="panel-foot" id="health-detail">Conectando con el backend…</p>
-        </div>
+        </section>
 
-        <div class="link-list">
-          <a class="link-row" href="/api/docs/" target="_blank" rel="noopener">
-            <span class="link-icon">API</span>
-            <span><strong>Swagger / OpenAPI</strong><small>Explorar los endpoints REST</small></span>
-            <span class="chev">›</span>
-          </a>
-          <a class="link-row" href="/api/schema/" target="_blank" rel="noopener">
-            <span class="link-icon">JSON</span>
-            <span><strong>Esquema OpenAPI 3</strong><small>Contrato legible por máquina</small></span>
-            <span class="chev">›</span>
-          </a>
-          <a class="link-row" href="/admin/" target="_blank" rel="noopener">
-            <span class="link-icon">ADM</span>
-            <span><strong>Django Admin</strong><small>Gestión de usuarios y flota</small></span>
-            <span class="chev">›</span>
-          </a>
-        </div>
+        <!-- ======================================================== CONDUCTOR -->
+        <section class="view" id="view-conductor" data-view="conductor" aria-labelledby="conductor-title">
+          <div class="view-head">
+            <div>
+              <p class="kicker">Modo conducción</p>
+              <h1 id="conductor-title">Tu turno</h1>
+            </div>
+            <span class="role-chip" id="conductor-status-chip">—</span>
+          </div>
 
-        <div class="section-head"><h2>Arquitectura</h2></div>
-        <div class="arch-list">
-          <article class="arch-item">
-            <span class="arch-tag">Datos</span>
-            <h3>Persistencia políglota</h3>
-            <p>MySQL 3FN para la operación transaccional y MongoDB con índice 2dsphere para telemetría.</p>
-          </article>
-          <article class="arch-item">
-            <span class="arch-tag">Escalado</span>
-            <h3>Backend stateless</h3>
-            <p>JWT y sesiones en base de datos. Cualquier réplica atiende cualquier petición.</p>
-          </article>
-          <article class="arch-item">
-            <span class="arch-tag">Seguridad</span>
-            <h3>Defensa en profundidad</h3>
-            <p>Argon2id, bloqueo anti-fuerza bruta, RBAC, anti-IDOR y filtro Haversine anti-spoofing.</p>
-          </article>
-        </div>
-      </section>
-    </main>
+          <div class="drive-card" id="drive-card">
+            <div class="drive-top">
+              <div>
+                <span class="label">Vehículo</span>
+                <strong id="drive-patente">—</strong>
+                <small id="drive-linea">—</small>
+              </div>
+              <div class="drive-cupos">
+                <span class="label">Cupos</span>
+                <strong id="drive-cupos">—</strong>
+              </div>
+            </div>
+            <div class="drive-actions">
+              <button class="btn btn-primary btn-tall" id="shift-btn" type="button">Iniciar turno</button>
+              <button class="btn btn-ghost btn-tall" id="gps-btn" type="button" disabled>GPS apagado</button>
+            </div>
+            <p class="drive-status" id="drive-status">Solicita tu código OTP para comenzar.</p>
+          </div>
 
-    <nav class="tabbar" aria-label="Navegación principal">
-      <button class="tab is-active" type="button" data-view="inicio" aria-current="page">
-        <svg viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V20h-6v-6H10v6H4z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
-        <span>Inicio</span>
-      </button>
-      <button class="tab" type="button" data-view="rutas">
-        <svg viewBox="0 0 24 24"><path d="M5 19c2.5 0 2.5-14 7-14s4.5 14 7 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="19" r="1.8" fill="currentColor"/><circle cx="19" cy="19" r="1.8" fill="currentColor"/></svg>
-        <span>Rutas</span>
-      </button>
-      <button class="tab" type="button" data-view="flota">
-        <svg viewBox="0 0 24 24"><path d="M4 15l1.6-4.6A3 3 0 0 1 8.4 8h7.2a3 3 0 0 1 2.8 2.4L20 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><rect x="3" y="14" width="18" height="5.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="7.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="16.5" cy="19.5" r="1.4" fill="currentColor"/></svg>
-        <span>Flota</span>
-      </button>
-      <button class="tab" type="button" data-view="mas">
-        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></svg>
-        <span>Más</span>
-      </button>
-    </nav>
+          <div class="card">
+            <div class="section-head"><h2>Asientos</h2><span class="meta">Switch rápido</span></div>
+            <div class="seat-switch" role="group" aria-label="Estado de asientos">
+              <button class="seat-btn is-active" id="seat-available" type="button">Disponible</button>
+              <button class="seat-btn" id="seat-full" type="button">Lleno</button>
+            </div>
+            <div class="seat-counter">
+              <button class="icon-btn" id="cupos-minus" type="button" aria-label="Quitar un cupo">−</button>
+              <div><strong id="cupos-value">4</strong><span>cupos libres</span></div>
+              <button class="icon-btn" id="cupos-plus" type="button" aria-label="Agregar un cupo">+</button>
+            </div>
+            <p class="hint">El cambio se envía a la API y viaja en la próxima telemetría.</p>
+          </div>
+
+          <div class="card">
+            <div class="section-head"><h2>Pagos QR pendientes</h2><span class="badge" id="pending-count">0</span></div>
+            <div class="pending-list" id="pending-list"><p class="empty">Sin pagos pendientes.</p></div>
+          </div>
+
+          <div class="card gps-card">
+            <div class="section-head"><h2>Emisor GPS</h2><span class="meta" id="gps-last">Sin envíos</span></div>
+            <p class="hint">Simula el desplazamiento del colectivo y envía telemetría cada 4 s a <code>/api/telemetria/enviar/</code>.</p>
+            <div class="gps-readout" id="gps-readout">—</div>
+          </div>
+        </section>
+
+        <!-- ============================================================ ADMIN -->
+        <section class="view" id="view-admin" data-view="admin" aria-labelledby="admin-title">
+          <div class="view-head">
+            <div>
+              <p class="kicker">Administración</p>
+              <h1 id="admin-title">Operación</h1>
+            </div>
+            <button class="icon-btn" id="admin-refresh" type="button" aria-label="Actualizar administración" title="Actualizar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+
+          <div class="stat-grid" id="admin-stats">
+            <article class="stat-card"><span class="label">Líneas</span><strong>—</strong><small>—</small></article>
+            <article class="stat-card"><span class="label">Conductores</span><strong>—</strong><small>—</small></article>
+            <article class="stat-card"><span class="label">En turno</span><strong>—</strong><small>—</small></article>
+            <article class="stat-card accent"><span class="label">Pagos</span><strong>—</strong><small>—</small></article>
+          </div>
+
+          <div class="subtabs" id="admin-subtabs" role="tablist" aria-label="Secciones de administración">
+            <button class="subtab is-active" type="button" data-admin="conductores" role="tab" aria-selected="true">Conductores</button>
+            <button class="subtab" type="button" data-admin="lineas" role="tab" aria-selected="false">Líneas</button>
+            <button class="subtab" type="button" data-admin="flota" role="tab" aria-selected="false">Flota</button>
+            <button class="subtab" type="button" data-admin="pagos" role="tab" aria-selected="false">QR</button>
+          </div>
+
+          <!-- Conductores -->
+          <div class="admin-panel" id="admin-conductores" role="tabpanel">
+            <div class="card">
+              <div class="section-head">
+                <h2>Conductores</h2>
+                <button class="btn btn-small" id="new-conductor-btn" type="button">Nuevo</button>
+              </div>
+              <div class="search-row">
+                <input id="conductor-search" type="search" placeholder="Buscar RUT, nombre, patente o folio" autocomplete="off">
+                <button class="btn btn-small btn-ghost" id="conductor-search-btn" type="button">Buscar</button>
+              </div>
+
+              <form class="form form-grid" id="conductor-form" hidden>
+                <input type="hidden" id="conductor-edit-id">
+                <label class="field"><span>RUT</span><input id="conductor-rut" name="rut" placeholder="11.111.111-1" required></label>
+                <label class="field"><span>Nombre</span><input id="conductor-nombre" name="nombre" placeholder="Nombre completo" required></label>
+                <label class="field"><span>Email</span><input id="conductor-email" name="email" type="email" placeholder="conductor@correo.cl" required></label>
+                <label class="field"><span>Password</span><input id="conductor-password" name="password" type="password" placeholder="Mínimo 12 caracteres" required></label>
+                <label class="field"><span>Folio CONATACOCH</span><input id="conductor-folio" name="folio_conatacoch" placeholder="234001" required></label>
+                <label class="field"><span>Patente</span><input id="conductor-patente" name="patente" placeholder="ABCD-12" required></label>
+                <label class="field"><span>Línea</span><select id="conductor-linea" name="linea_id" required></select></label>
+                <label class="field"><span>Cupos</span><input id="conductor-cupos" name="cupos_disponibles" type="number" min="0" max="30" value="4"></label>
+                <label class="field"><span>Marca / modelo</span><input id="conductor-marca" name="marca_modelo" placeholder="Toyota Yaris"></label>
+                <label class="field"><span>Capacidad</span><input id="conductor-capacidad" name="capacidad_pasajeros" type="number" min="1" max="30" value="4"></label>
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="submit" id="conductor-submit">Guardar conductor</button>
+                  <button class="btn btn-ghost" type="button" id="conductor-cancel">Cancelar</button>
+                </div>
+                <p class="form-error" id="conductor-error" role="alert"></p>
+              </form>
+
+              <div class="data-list" id="admin-conductores-list">
+                <p class="empty">Cargando conductores…</p>
+              </div>
+              <div class="pager" id="conductores-pager">
+                <button class="icon-btn small" type="button" data-page="prev" aria-label="Anterior">‹</button>
+                <span class="meta" id="conductores-page">1 / 1</span>
+                <button class="icon-btn small" type="button" data-page="next" aria-label="Siguiente">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Líneas -->
+          <div class="admin-panel" id="admin-lineas" role="tabpanel" hidden>
+            <div class="card">
+              <div class="section-head">
+                <h2>Líneas y tarifas</h2>
+                <button class="btn btn-small" id="new-linea-btn" type="button">Nueva</button>
+              </div>
+              <div class="search-row">
+                <input id="linea-search" type="search" placeholder="Buscar folio, recorrido o comuna" autocomplete="off">
+                <button class="btn btn-small btn-ghost" id="linea-search-btn" type="button">Buscar</button>
+              </div>
+
+              <form class="form form-grid" id="linea-form" hidden>
+                <input type="hidden" id="linea-edit-id">
+                <label class="field"><span>Región</span><input id="linea-region" name="region" type="number" min="1" max="16" value="13" required></label>
+                <label class="field"><span>Folio</span><input id="linea-folio" name="folio" type="number" min="1" placeholder="20061" required></label>
+                <label class="field"><span>Tipo servicio</span>
+                  <select id="linea-tipo-servicio" name="tipo_servicio">
+                    <option value="AUTOMOVIL URBANO TAXI COLECTIVO">Urbano</option>
+                    <option value="AUTOMOVIL RURAL TAXI COLECTIVO">Rural</option>
+                  </select>
+                </label>
+                <label class="field"><span>Nombre recorrido</span><input id="linea-nombre" name="nombre_recorrido" placeholder="ITINERARIO 1" required></label>
+                <label class="field"><span>Tipo trazado</span>
+                  <select id="linea-trazado" name="tipo_trazado">
+                    <option value="PRINCIPAL">Principal</option>
+                    <option value="ALTERNATIVO">Alternativo</option>
+                  </select>
+                </label>
+                <label class="field"><span>Origen</span><input id="linea-origen" name="nombre_origen" placeholder="Melipilla" required></label>
+                <label class="field"><span>Comuna origen</span><input id="linea-comuna-origen" name="comuna_origen" placeholder="Melipilla" required></label>
+                <label class="field"><span>Domicilio origen</span><input id="linea-domicilio-origen" name="domicilio_origen" placeholder="Av. Manso" required></label>
+                <label class="field"><span>Destino</span><input id="linea-destino" name="nombre_destino" placeholder="Melipilla" required></label>
+                <label class="field"><span>Comuna destino</span><input id="linea-comuna-destino" name="comuna_destino" placeholder="Melipilla" required></label>
+                <label class="field"><span>Domicilio destino</span><input id="linea-domicilio-destino" name="domicilio_destino" placeholder="Circunvalación" required></label>
+                <label class="field"><span>Tarifa CLP</span><input id="linea-tarifa" name="tarifa_actual" type="number" min="0" step="50" value="1000" required></label>
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="submit" id="linea-submit">Guardar línea</button>
+                  <button class="btn btn-ghost" type="button" id="linea-cancel">Cancelar</button>
+                </div>
+                <p class="form-error" id="linea-error" role="alert"></p>
+              </form>
+
+              <div class="data-list" id="admin-lineas-list">
+                <p class="empty">Cargando líneas…</p>
+              </div>
+              <div class="pager" id="lineas-pager">
+                <button class="icon-btn small" type="button" data-page="prev" aria-label="Anterior">‹</button>
+                <span class="meta" id="lineas-page">1 / 1</span>
+                <button class="icon-btn small" type="button" data-page="next" aria-label="Siguiente">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flota -->
+          <div class="admin-panel" id="admin-flota" role="tabpanel" hidden>
+            <div class="card">
+              <div class="section-head"><h2>Flota en vivo</h2><span class="meta" id="admin-fleet-updated">—</span></div>
+              <div class="map-card map-card-sm">
+                <div class="map" id="admin-map" aria-label="Mapa de flota activa"></div>
+              </div>
+              <div class="data-list" id="admin-fleet-list"><p class="empty">Cargando flota…</p></div>
+            </div>
+          </div>
+
+          <!-- Pagos -->
+          <div class="admin-panel" id="admin-pagos" role="tabpanel" hidden>
+            <div class="card">
+              <div class="section-head"><h2>Auditoría QR</h2>
+                <select id="pago-estado" class="mini-select" aria-label="Filtrar pagos">
+                  <option value="">Todos</option>
+                  <option value="PENDIENTE">Pendientes</option>
+                  <option value="PAGADO">Pagados</option>
+                  <option value="ANULADO">Anulados</option>
+                  <option value="EXPIRADO">Expirados</option>
+                </select>
+              </div>
+              <div class="data-list" id="admin-pagos-list"><p class="empty">Cargando pagos…</p></div>
+              <div class="pager" id="pagos-pager">
+                <button class="icon-btn small" type="button" data-page="prev" aria-label="Anterior">‹</button>
+                <span class="meta" id="pagos-page">1 / 1</span>
+                <button class="icon-btn small" type="button" data-page="next" aria-label="Siguiente">›</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ CUENTA -->
+        <section class="view" id="view-cuenta" data-view="cuenta" aria-labelledby="cuenta-title">
+          <div class="view-head">
+            <div>
+              <p class="kicker">Cuenta</p>
+              <h1 id="cuenta-title">Tu perfil</h1>
+            </div>
+          </div>
+          <div class="card profile-card">
+            <div class="avatar" id="account-avatar">—</div>
+            <h2 id="account-name">—</h2>
+            <p class="meta" id="account-email">—</p>
+            <dl class="profile-grid">
+              <div><dt>RUT</dt><dd id="account-rut">—</dd></div>
+              <div><dt>Rol</dt><dd id="account-role">—</dd></div>
+              <div><dt>Sesión</dt><dd id="account-session">JWT activo</dd></div>
+              <div><dt>API</dt><dd><a href="/api/docs/" target="_blank" rel="noopener">Swagger</a></dd></div>
+            </dl>
+            <button class="btn btn-ghost btn-block" id="account-logout" type="button">Cerrar sesión</button>
+          </div>
+          <div class="card">
+            <div class="section-head"><h2>Accesos</h2></div>
+            <a class="link-row" href="/admin/" target="_blank" rel="noopener"><span class="link-icon">ADM</span><span><strong>Django Admin</strong><small>Usuarios, líneas y respaldo</small></span><span class="chev">›</span></a>
+            <a class="link-row" href="/api/docs/" target="_blank" rel="noopener"><span class="link-icon">API</span><span><strong>Swagger / OpenAPI</strong><small>Contrato completo de la API</small></span><span class="chev">›</span></a>
+            <a class="link-row" href="/api/redoc/" target="_blank" rel="noopener"><span class="link-icon">DOC</span><span><strong>ReDoc</strong><small>Documentación legible</small></span><span class="chev">›</span></a>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" id="tabbar" aria-label="Navegación principal"></nav>
+    </section>
+  </div>
+
+  <!-- ============================================================ OTP MODAL -->
+  <div class="modal" id="otp-modal" hidden>
+    <div class="modal-backdrop" data-close="otp-modal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="otp-title">
+      <button class="modal-close" type="button" data-close="otp-modal" aria-label="Cerrar">×</button>
+      <p class="kicker">2FA</p>
+      <h2 id="otp-title">Código OTP</h2>
+      <p class="hint" id="otp-hint">Solicita el código para confirmar la operación.</p>
+      <div class="otp-demo" id="otp-demo" hidden></div>
+      <form id="otp-form">
+        <label class="field"><span>Código de 6 dígitos</span><input id="otp-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" required></label>
+        <p class="form-error" id="otp-error" role="alert"></p>
+        <button class="btn btn-primary btn-block" type="submit">Confirmar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================= QR MODAL -->
+  <div class="modal" id="qr-modal" hidden>
+    <div class="modal-backdrop" data-close="qr-modal"></div>
+    <div class="modal-card qr-card" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+      <button class="modal-close" type="button" data-close="qr-modal" aria-label="Cerrar">×</button>
+      <p class="kicker">Pago digital</p>
+      <h2 id="qr-title">Pagar con QR</h2>
+      <form id="qr-form">
+        <label class="field"><span>Monto CLP</span><input id="qr-monto" type="number" min="0" step="50" value="1000" required></label>
+        <p class="hint" id="qr-context">—</p>
+        <p class="form-error" id="qr-error" role="alert"></p>
+        <button class="btn btn-primary btn-block" type="submit" id="qr-generate">Generar QR</button>
+      </form>
+      <div class="qr-result" id="qr-result" hidden>
+        <div class="qr-canvas" id="qr-canvas"></div>
+        <p class="qr-code" id="qr-code">—</p>
+        <p class="qr-status" id="qr-status">Pendiente de confirmación del conductor.</p>
+        <button class="btn btn-ghost btn-block" type="button" data-close="qr-modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================== ALERTA PAGO CONDUCTOR -->
+  <div class="payment-alert" id="payment-alert" hidden role="alert">
+    <div>
+      <strong>Pago QR recibido</strong>
+      <span id="payment-alert-detail">—</span>
+    </div>
+    <button class="btn btn-primary" id="payment-alert-confirm" type="button">Confirmar</button>
+    <button class="icon-btn small" type="button" data-dismiss="payment-alert" aria-label="Descartar">×</button>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="assets/app.js" defer></script>
 </body>
 </html>
