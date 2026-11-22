@@ -1,0 +1,13 @@
+# =============================================================================
+# CONATACOCH - dependencias del backend (Python 3.12)
+# =============================================================================
+Django>=5.2,<6.0
+djangorestframework>=3.15,<4.0
+drf-spectacular>=0.28,<1.0
+drf-spectacular-sidecar>=2024.7.1
+djangorestframework-simplejwt>=5.5,<6.0
+PyMySQL>=1.1,<2.0
+pymongo>=4.9,<5.0
+cryptography>=43,<46
+gunicorn>=23,<24
+whitenoise>=6.7,<7.0
