@@ -13,7 +13,8 @@ import time
 import httpx
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8001")
-PASSWORD = "CargaPass123!"
+PASSWORD_CONDUCTOR = "ConducPass123!"
+PASSWORD_PASAJERO = "PasajeroPass123!"
 
 
 def pct(valores, p):
@@ -22,10 +23,10 @@ def pct(valores, p):
     return ordenados[max(idx, 0)]
 
 
-def login(client, email):
+def login(client, email, password):
     r = client.post(
         f"{BASE_URL}/api/auth/login/",
-        json={"email": email, "password": PASSWORD},
+        json={"email": email, "password": password},
         timeout=15.0,
     )
     r.raise_for_status()
@@ -35,8 +36,8 @@ def login(client, email):
 def main():
     with httpx.Client(timeout=20.0) as client:
         # tokens
-        token_c = login(client, "carga01@test.cl")
-        token_p = login(client, "pasajero001@test.cl")
+        token_c = login(client, "carga01@test.cl", PASSWORD_CONDUCTOR)
+        token_p = login(client, "pasajero001@test.cl", PASSWORD_PASAJERO)
 
         h_c = {"Authorization": f"Bearer {token_c}"}
         h_p = {"Authorization": f"Bearer {token_p}"}

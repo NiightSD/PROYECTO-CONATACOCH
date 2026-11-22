@@ -20,8 +20,8 @@ from django.db import transaction
 
 from core.models import Conductor, LineaColectiva, Usuario, Vehiculo
 
-PASSWORD_CARGA = "CargaPass123!"
-PASSWORD_CLIENTE = "CargaPass123!"
+PASSWORD_CONDUCTOR_CARGA = "ConducPass123!"
+PASSWORD_PASAJERO_CARGA = "PasajeroPass123!"
 PASSWORD_CONDUCTOR_DEMO = "ConducPass123!"
 PASSWORD_CLIENTE_DEMO = "PasajeroPass123!"
 PASSWORD_ADMIN_DEMO = "AdminPass123!"
@@ -91,21 +91,21 @@ class Command(BaseCommand):
         # Cuentas demo compatibles con tests/test_carga.py y con la suite.
         self._upsert(
             email="admin@test.cl",
-            rut="19000001-4",
+            rut="19000001-K",
             nombre="Admin Carga",
             password=PASSWORD_ADMIN_DEMO,
             rol=Usuario.Rol.ADMIN,
         )
         self._upsert(
             email="conductor@test.cl",
-            rut="19000002-2",
+            rut="19000002-8",
             nombre="Conductor Demo Carga",
             password=PASSWORD_CONDUCTOR_DEMO,
             rol=Usuario.Rol.CONDUCTOR,
         )
         self._upsert(
             email="cliente@test.cl",
-            rut="19000003-0",
+            rut="19000003-6",
             nombre="Cliente Demo Carga",
             password=PASSWORD_CLIENTE_DEMO,
             rol=Usuario.Rol.CLIENTE,
@@ -139,13 +139,13 @@ class Command(BaseCommand):
                 email=email,
                 rut=rut,
                 nombre=f"Conductor Carga {indice:02d}",
-                password=PASSWORD_CARGA,
+                password=PASSWORD_CONDUCTOR_CARGA,
                 rol=Usuario.Rol.CONDUCTOR,
             )
             vehiculo, _ = Vehiculo.objects.update_or_create(
-                patente=f"CA-{indice:04d}",
+                patente=f"CRGA-{indice:02d}",
                 defaults={
-                    "marca_modelo": "Sintetico",
+                    "marca_modelo": "Sintetico Carga",
                     "capacidad_pasajeros": 4,
                     "linea": linea,
                 },
@@ -167,7 +167,7 @@ class Command(BaseCommand):
                 email=f"pasajero{indice:03d}@test.cl",
                 rut=_rut(30000000 + indice),
                 nombre=f"Pasajero Carga {indice:03d}",
-                password=PASSWORD_CLIENTE,
+                password=PASSWORD_PASAJERO_CARGA,
                 rol=Usuario.Rol.CLIENTE,
             )
             creados_p += 1
@@ -176,6 +176,7 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"[seed_carga] OK linea={linea.id} "
                 f"conductores={creados_c} pasajeros={creados_p} "
-                f"password={PASSWORD_CARGA}"
+                f"pass_conductor={PASSWORD_CONDUCTOR_CARGA} "
+                f"pass_pasajero={PASSWORD_PASAJERO_CARGA}"
             )
         )
