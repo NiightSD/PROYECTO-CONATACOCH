@@ -1,5 +1,6 @@
 package cl.conatacoch.app.ui.components
 
+import android.graphics.Color as AndroidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
@@ -13,10 +14,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import cl.conatacoch.app.R
 import cl.conatacoch.app.domain.model.FleetVehicle
-import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.CopyrightOverlay
 import org.osmdroid.views.overlay.Marker
 
 /**
@@ -33,6 +36,14 @@ fun ConatacochMap(
 ) {
     val context = LocalContext.current
     val fitted = remember { mutableStateOf(false) }
+    val attribution = remember {
+        CopyrightOverlay(context).apply {
+            setTextColor(AndroidColor.argb(190, 255, 255, 255))
+            setTextSize(10)
+            setAlignRight(true)
+            setAlignBottom(true)
+        }
+    }
     val mapView = remember {
         MapView(context).apply {
             setTileSource(darkTileSource())
@@ -95,6 +106,8 @@ fun ConatacochMap(
                 }.also { map.overlays.add(it) }
             }
 
+            map.overlays.add(attribution)
+
             if (points.isNotEmpty() && !fitted.value) {
                 if (points.size == 1) {
                     map.controller.setZoom(14.0)
@@ -113,15 +126,31 @@ fun ConatacochMap(
     )
 }
 
-private fun darkTileSource(): XYTileSource = XYTileSource(
-    "CartoDark",
+/**
+ * Teselas oscuras de Esri (World Dark Gray Base).
+ *
+ * Se reemplazo CARTO porque su servicio empezo a devolver una imagen con el
+ * texto "API KEY REQUIRED" cuando la cuenta no tiene clave. Esri publica este
+ * basemap sin API key y mantiene el contraste de la marca. El orden de la URL
+ * de ArcGIS es z/y/x, por eso se sobreescribe getTileURLString.
+ */
+private class EsriDarkTileSource : OnlineTileSourceBase(
+    "EsriWorldDarkGray",
     0,
     19,
     256,
-    ".png",
+    ".jpg",
     arrayOf(
-        "https://a.basemaps.cartocdn.com/dark_all/",
-        "https://b.basemaps.cartocdn.com/dark_all/",
-        "https://c.basemaps.cartocdn.com/dark_all/",
+        "https://server.arcgisonline.com/ArcGIS/rest/services/" +
+            "Canvas/World_Dark_Gray_Base/MapServer/tile/"
     ),
-)
+    "© Esri, HERE, Garmin, OpenStreetMap contributors",
+) {
+    override fun getTileURLString(pMapTileIndex: Long): String =
+        getBaseUrl() +
+            MapTileIndex.getZoom(pMapTileIndex) + "/" +
+            MapTileIndex.getY(pMapTileIndex) + "/" +
+            MapTileIndex.getX(pMapTileIndex)
+}
+
+private fun darkTileSource(): OnlineTileSourceBase = EsriDarkTileSource()

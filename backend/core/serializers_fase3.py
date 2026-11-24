@@ -169,6 +169,65 @@ class ConductorAdminUpdateSerializer(serializers.Serializer):
             return instance
 
 
+class RegistroClienteSerializer(serializers.Serializer):
+    """Auto-registro publico de pasajeros (rol CLIENTE).
+
+    El registro de conductores sigue siendo exclusivo del ADMIN porque exige
+    validar RUT, folio y patente. Este endpoint permite que un pasajero cree
+    su propia cuenta sin escalar privilegios: el rol siempre es CLIENTE.
+    """
+
+    rut = serializers.CharField(max_length=12)
+    nombre = serializers.CharField(max_length=150)
+    email = serializers.EmailField(max_length=254)
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True)
+
+    def validate_rut(self, value: str) -> str:
+        rut = validar_rut_chileno(value)
+        if Usuario.objects.filter(rut=rut).exists():
+            raise serializers.ValidationError("Ya existe una cuenta con este RUT.")
+        return rut
+
+    def validate_email(self, value: str) -> str:
+        email = value.strip().lower()
+        if Usuario.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("Ya existe una cuenta con este email.")
+        return email
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs.get("password") != attrs.get("password_confirm"):
+            raise serializers.ValidationError(
+                {"password_confirm": "Las contraseñas no coinciden."}
+            )
+        # validate_password aplica la politica de settings (minimo 12,
+        # no numerica, no comun y no similar a los datos del usuario).
+        candidato = Usuario(
+            rut=attrs.get("rut", ""),
+            nombre=attrs.get("nombre", ""),
+            email=attrs.get("email", ""),
+        )
+        try:
+            validate_password(attrs["password"], user=candidato)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": list(exc.messages)}) from exc
+        return attrs
+
+    def create(self, validated_data: dict) -> Usuario:
+        validated_data.pop("password_confirm", None)
+        password = validated_data.pop("password")
+        usuario = Usuario(
+            rut=validated_data["rut"],
+            nombre=validated_data["nombre"],
+            email=validated_data["email"],
+            rol=Usuario.Rol.CLIENTE,
+            activo=True,
+        )
+        usuario.set_password(password)
+        usuario.save()
+        return usuario
+
+
 class LineaUpsertSerializer(serializers.Serializer):
     """Alta/actualizacion idempotente de una linea colectiva."""
 

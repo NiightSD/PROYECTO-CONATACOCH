@@ -48,6 +48,31 @@ indicado en la columna **Pie de figura**.
 Cada fila corresponde a un `[POR COMPLETAR]` del informe. Si el documento tiene
 un marcador adicional, se agrega una fila con el mismo formato.
 
+### 2.0 Tabla exacta para los `[POR COMPLETAR]` de `INFORME UNI 3 CONATACOCH.docx`
+
+Esta tabla cubre exactamente los marcadores solicitados: **3.3 Figuras 1 a 4**,
+**4.1**, **4.2**, **5.1**, **5.2** y **6.2**. Reemplazar cada
+`[POR COMPLETAR]` / `[Insertar captura...]` por la imagen indicada y conservar
+el pie de figura del informe.
+
+| Sección | Marcador del docx | Figura / evidencia | Qué debe verse | Archivo sugerido | Cómo tomarla |
+|---|---|---|---|---|---|
+| **3.3** | `[POR COMPLETAR]` | **Figura 1** — Autenticación unificada | Formulario email/password, chips demo, botón Entrar y, si se quiere, el enlace “¿No tienes cuenta? Regístrate como pasajero”. Ideal: app Android y panel web lado a lado o una sola captura nítida. | `fase3_33_fig1_login.png` | Abrir la app Android sin sesión o el panel web; mostrar la pantalla de login completa con la URL de API visible. |
+| **3.3** | `[POR COMPLETAR]` | **Figura 2** — Interfaz del Pasajero | Mapa en vivo con flota, trazado/ruta, tarjeta de ETA (minutos, distancia, patente, cupos) y botón **Pagar con QR**. | `fase3_33_fig2_pasajero.png` | Login `pasajero1@conatacoch.cl`; seleccionar una línea; esperar telemetría; capturar mapa + ETA + botón QR. |
+| **3.3** | `[POR COMPLETAR]` | **Figura 3** — Modo Conducción | Turno activo, control `−`/`+` de cupos, estado Disponible/Lleno, GPS enviando y alerta de pago QR (visual y sonora). | `fase3_33_fig3_conductor.png` | Login `conductor1@conatacoch.cl`; iniciar turno con OTP; crear un pago desde el pasajero para que aparezca la alerta; capturar. |
+| **3.3** | `[POR COMPLETAR]` | **Figura 4** — Panel Web de Administración | Panel mobile-first con flota, líneas/tarifas y auditoría de pagos QR; chip de rol ADMIN y estado de Mongo/health. | `fase3_33_fig4_admin.png` | Login `admin@conatacoch.cl` en `http://localhost:8080`; recorrer las pestañas Flota, Líneas y Pagos; capturar la vista principal. |
+| **4.1** | `[Insertar captura del diagrama físico ejecutado o salida del comando SHOW TABLES; / esquema desplegado.]` | **Base de datos relacional** | Salida de `SHOW TABLES;` con las 6 tablas (`usuario`, `linea_colectiva`, `vehiculo`, `conductor`, `paradero`, `transaccion_pago`) y, opcionalmente, `SHOW INDEX` o el diagrama físico. | `fase3_41_mysql_tablas.png` | `docker compose exec db_mysql mysql -uconatacoch -p conatacoch -e "SHOW TABLES;"` (ocultar password). |
+| **4.2** | `[Insertar captura de la interfaz web de MongoDB Atlas mostrando el clúster activo y documentos reales insertados.]` | **Base de datos NoSQL en la nube** | Clúster de Atlas activo + base `telemetria_ubicacion`, colección `ubicaciones` y un documento GeoJSON con `ubicacion.coordinates`, `velocidad_kmh`, `timestamp` e `id_vehiculo`. | `fase3_42_mongodb_atlas.png` | Atlas → Browse Collections → `telemetria_ubicacion.ubicaciones`; enviar telemetría antes para que exista un documento real. |
+| **5.1** | `[Insertar 2 o 3 fragmentos breves o capturas reales de su código fuente mostrando el middleware RBAC/JWT, el hashing Argon2id y la validación de coordenadas.]` | **Patrones de seguridad en código** | Tres recuadros legibles: (a) `permissions.py` / JWT y RBAC, (b) `security.py` con Argon2id, (c) `security.py` con Haversine/`es_velocidad_sospechosa` y HTTP 422. | `fase3_51_codigo_rbac_argon2.png` y `fase3_51_codigo_antispuf.png` | Abrir los archivos en el IDE, resaltar las líneas y capturar; ocultar claves y rutas absolutas. |
+| **5.2** | `[Insertar captura del gráfico de contribuciones o historial de commits/ramas en GitHub.]` | **Trabajo colaborativo Git** | Gráfico de contribuciones de los tres integrantes o `git log --oneline --graph --all` con ramas `feature/*` y commits de **Heiner Sepúlveda**, **Vicente Macaya** y **Félix Escobar**. | `fase3_52_git_historial.png` | Ejecutar `git log --oneline --graph --all -30` y/o abrir GitHub → Insights → Contributors. |
+| **6.2** | `[Insertar captura de la terminal mostrando docker-compose up / contenedores corriendo sin errores y las variables de entorno configuradas (ocultando contraseñas reales).]` | **Guía de instalación y despliegue** | Terminal con `docker compose ... up -d --build`, luego `docker compose ps` con `db_mysql`, `backend`, `web_admin` y `mongo_local` en `Up/healthy`; `.env` visible con secretos tapados. | `fase3_62_docker_up.png` | Ejecutar los comandos de la sección 3.1; capturar terminal y una segunda ventana con `.env` censurado. |
+
+> **Regla para 5.1:** si el informe solo admite una imagen, unir los tres
+> recuadros en un collage vertical y usar `fase3_51_codigo_seguridad.png`.
+> **Regla para 3.3:** las cuatro figuras deben ser del software real, no del
+> prototipo estático; si una pantalla no cabe, usar scroll y una segunda captura
+> con el sufijo `_b`.
+
 ### 2.1 Portada, resumen y contexto
 
 | ID | Sección del informe | Captura a tomar | Qué debe verse | Pasos | Archivo | Pie de figura |

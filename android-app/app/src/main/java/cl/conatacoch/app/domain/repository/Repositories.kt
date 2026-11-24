@@ -15,6 +15,13 @@ import kotlinx.coroutines.flow.StateFlow
 interface AuthRepository {
     fun session(): StateFlow<Session?>
     suspend fun login(email: String, password: String): Result<Session>
+    suspend fun register(
+        rut: String,
+        nombre: String,
+        email: String,
+        password: String,
+        passwordConfirm: String,
+    ): Result<Session>
     fun logout()
 }
 

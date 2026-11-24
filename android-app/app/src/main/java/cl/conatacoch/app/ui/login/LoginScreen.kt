@@ -18,6 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +50,12 @@ import cl.conatacoch.app.ui.theme.ConaYellow
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showRegister by rememberSaveable { mutableStateOf(false) }
+
+    if (showRegister) {
+        RegisterScreen(onBack = { showRegister = false })
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -134,6 +143,17 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel()) {
                     color = ConaMutedSoft,
                     style = MaterialTheme.typography.bodySmall,
                 )
+
+                TextButton(
+                    onClick = { showRegister = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        "¿No tienes cuenta? Regístrate como pasajero",
+                        color = ConaYellow,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
         }
 

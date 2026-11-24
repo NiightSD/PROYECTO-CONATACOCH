@@ -1,12 +1,4 @@
-"""
-Configuracion Django 5.2 para CONATACOCH.
 
-Principios de la Fase 1:
-  * 12-factor / stateless: toda la configuracion entra por variables de entorno.
-  * Pool de conexiones MySQL por worker (CONN_MAX_AGE + health checks).
-  * MongoDB Atlas como persistencia documental prioritaria; fallback local.
-  * Seguridad: JWT, hashing de passwords, throttling, cabeceras seguras.
-"""
 from __future__ import annotations
 
 import os
@@ -49,9 +41,23 @@ DEBUG = env_bool("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "dev-only-insecure-secret-key-change-me")
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,backend,web_admin")
+
+if DEBUG:
+    for _dev_host in ("10.0.2.2", "0.0.0.0", "host.docker.internal"):
+        if _dev_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_dev_host)
+
 CSRF_TRUSTED_ORIGINS = env_list(
     "CSRF_TRUSTED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080"
 )
+if DEBUG:
+    for _dev_origin in (
+        "http://10.0.2.2:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ):
+        if _dev_origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_dev_origin)
 
 # Nginx termina TLS y propaga X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -76,7 +82,7 @@ SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
 SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
 
-# Limites de entrada (mitiga abuso de payloads).
+# Limites de entrada
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
@@ -91,12 +97,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Terceros
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
     "drf_spectacular_sidecar",
-    # Propias
     "core.apps.CoreConfig",
 ]
 
@@ -154,7 +158,6 @@ if DB_ENGINE.endswith("sqlite3"):
         "default": {
             "ENGINE": DB_ENGINE,
             "NAME": env("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
-            # Permite esperar al lock en pruebas de carga concurrentes.
             "OPTIONS": {"timeout": env_int("SQLITE_TIMEOUT", 30)},
         }
     }
@@ -167,7 +170,6 @@ else:
             "PASSWORD": env("MYSQL_PASSWORD", "conatacoch_2026"),
             "HOST": env("MYSQL_HOST", "db_mysql"),
             "PORT": env("MYSQL_PORT", "3306"),
-            # Pool de conexiones: reutiliza la conexion por worker/thread.
             "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 600),
             "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
@@ -183,15 +185,14 @@ else:
 
 
 # -----------------------------------------------------------------------------
-# Cache / sesiones (stateless: no se guardan sesiones en el contenedor)
+# Cache / sesiones
 # -----------------------------------------------------------------------------
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 
-# -----------------------------------------------------------------------------
-# Hashing de passwords - Argon2id (OWASP Password Storage)
-# Argon2id es el algoritmo recomendado por OWASP para almacenar passwords.
-# -----------------------------------------------------------------------------
+
+# Hashing de passwords - Argon2id
+
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
@@ -230,7 +231,7 @@ REST_FRAMEWORK = {
 
 JWT_SECRET = env("JWT_SECRET") or SECRET_KEY
 
-# Clave dedicada para cifrar secretos TOTP (si esta vacia se deriva de SECRET_KEY).
+# Clave dedicada para cifrar secretos TOTP 
 OTP_ENCRYPTION_KEY = env("OTP_ENCRYPTION_KEY")
 
 SIMPLE_JWT = {
@@ -248,7 +249,7 @@ SIMPLE_JWT = {
 
 
 # -----------------------------------------------------------------------------
-# Manejo global de excepciones (sin stack traces expuestos al cliente)
+# Manejo global de excepciones
 # -----------------------------------------------------------------------------
 EXCEPTION_HANDLER = "core.security.custom_exception_handler"
 
@@ -268,7 +269,6 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": "/api",
     "COMPONENT_SPLIT_REQUEST": True,
     "SORT_OPERATIONS": True,
-    # Swagger UI y ReDoc servidos localmente (drf-spectacular-sidecar).
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "SWAGGER_UI_SETTINGS": {
@@ -293,12 +293,11 @@ SPECTACULAR_SETTINGS = {
 MONGO_ATLAS_URI = env("MONGO_ATLAS_URI")
 MONGO_LOCAL_URI = env("MONGO_LOCAL_URI", "mongodb://mongo_local:27017")
 
-# Prioridad explicita: Atlas con TLS si esta configurado; si no, local.
 MONGO_URI = MONGO_ATLAS_URI or MONGO_LOCAL_URI
 MONGO_USE_TLS = bool(MONGO_ATLAS_URI) or env_bool("MONGO_TLS", False)
 MONGO_DB_NAME = env("MONGO_DB_NAME", "telemetria_ubicacion")
 MONGO_COLLECTION = env("MONGO_COLLECTION", "ubicaciones")
-MONGO_TTL_SECONDS = env_int("MONGO_TTL_SECONDS", 14400)  # 4 horas
+MONGO_TTL_SECONDS = env_int("MONGO_TTL_SECONDS", 14400) 
 MONGO_MAX_POOL_SIZE = env_int("MONGO_MAX_POOL_SIZE", 50)
 MONGO_MIN_POOL_SIZE = env_int("MONGO_MIN_POOL_SIZE", 5)
 MONGO_TIMEOUT_MS = env_int("MONGO_TIMEOUT_MS", 5000)
@@ -316,15 +315,14 @@ USE_TZ = True
 
 
 # -----------------------------------------------------------------------------
-# Archivos estaticos (Whitenoise; collectstatic ocurre en build)
+# Archivos estaticos
 # -----------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
-        # Manifest + hash en produccion; en DEBUG se usan finders para que
-        # /api/docs/ y el admin funcionen sin ejecutar collectstatic.
+
         "BACKEND": (
             "whitenoise.storage.CompressedStaticFilesStorage"
             if DEBUG
@@ -341,7 +339,7 @@ APPEND_SLASH = True
 
 
 # -----------------------------------------------------------------------------
-# Logging a stdout (contenedor stateless)
+# Logging a stdout
 # -----------------------------------------------------------------------------
 LOGGING = {
     "version": 1,
@@ -384,9 +382,7 @@ if TEST_DB_ENGINE.endswith("sqlite3"):
     }
 
 
-# -----------------------------------------------------------------------------
-# Constantes de seguridad OWASP (Fase 2)
-# -----------------------------------------------------------------------------
+
 # Umbral de velocidad para deteccion de GPS spoofing (km/h)
 VELOCIDAD_MAXIMA_KMH = env_int("VELOCIDAD_MAXIMA_KMH", 130)
 

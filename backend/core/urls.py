@@ -34,6 +34,7 @@ from core.views_fase3 import (
     ConductorFinalizarTurnoView,
     ConductorPerfilView,
     FlotaEnVivoView,
+    RegistroClienteView,
 )
 
 router = DefaultRouter()
@@ -59,6 +60,7 @@ urlpatterns = [
 urlpatterns += [
     path("auth/login/", AuthLoginView.as_view(), name="auth-login"),
     path("auth/refresh/", AuthRefreshView.as_view(), name="auth-refresh"),
+    path("auth/registro/", RegistroClienteView.as_view(), name="auth-registro"),
 ]
 
 # ---------------------------------------------------------------------------

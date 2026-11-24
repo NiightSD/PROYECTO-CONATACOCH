@@ -1,12 +1,3 @@
-# =============================================================================
-# CONATACOCH - Override de desarrollo local
-# -----------------------------------------------------------------------------
-# Uso:
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-#
-# Expone el backend directamente en el host para depurar el API sin pasar por
-# Nginx. Mantiene la imagen stateless (no monta codigo fuente).
-# =============================================================================
 services:
   backend:
     ports:

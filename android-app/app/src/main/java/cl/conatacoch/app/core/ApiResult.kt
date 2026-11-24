@@ -1,5 +1,6 @@
 package cl.conatacoch.app.core
 
+import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import retrofit2.HttpException
 import java.io.IOException
@@ -31,13 +32,27 @@ private fun parseHttpError(e: HttpException): String {
     if (body.isNullOrBlank()) return "Error HTTP ${e.code()}"
     return runCatching {
         val json = JsonParser.parseString(body).asJsonObject
-        val detail = json.get("detail")
+        // DRF devuelve los errores de validacion dentro de "detail" como
+        // objeto campo -> lista. Se aplanan para mostrarlos en la UI.
+        val detail = flattenMessages(json.get("detail"))
         when {
-            detail != null && detail.isJsonArray ->
-                detail.asJsonArray.joinToString(" ") { it.asString }
-            detail != null && detail.isJsonPrimitive -> detail.asString
+            detail.isNotBlank() -> detail
             json.has("error") -> json.get("error").asString.replace('_', ' ')
             else -> "Error HTTP ${e.code()}"
         }
     }.getOrElse { "Error HTTP ${e.code()}" }
+}
+
+private fun flattenMessages(element: JsonElement?): String = when {
+    element == null || element.isJsonNull -> ""
+    element.isJsonPrimitive -> element.asString
+    element.isJsonArray -> element.asJsonArray
+        .mapNotNull { child -> flattenMessages(child).takeIf { it.isNotBlank() } }
+        .distinct()
+        .joinToString(" ")
+    element.isJsonObject -> element.asJsonObject.entrySet()
+        .mapNotNull { (_, value) -> flattenMessages(value).takeIf { it.isNotBlank() } }
+        .distinct()
+        .joinToString(" ")
+    else -> ""
 }

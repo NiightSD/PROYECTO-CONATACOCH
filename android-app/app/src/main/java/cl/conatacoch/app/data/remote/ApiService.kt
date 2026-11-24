@@ -17,6 +17,7 @@ import cl.conatacoch.app.data.remote.dto.PaginatedDto
 import cl.conatacoch.app.data.remote.dto.ParaderoDto
 import cl.conatacoch.app.data.remote.dto.RefreshRequestDto
 import cl.conatacoch.app.data.remote.dto.RefreshResponseDto
+import cl.conatacoch.app.data.remote.dto.RegistroRequestDto
 import cl.conatacoch.app.data.remote.dto.TelemetriaRequestDto
 import cl.conatacoch.app.data.remote.dto.TelemetriaResponseDto
 import cl.conatacoch.app.data.remote.dto.TransaccionDto
@@ -41,6 +42,9 @@ interface ApiService {
 
     @POST("auth/refresh/")
     suspend fun refresh(@Body body: RefreshRequestDto): RefreshResponseDto
+
+    @POST("auth/registro/")
+    suspend fun registrar(@Body body: RegistroRequestDto): LoginResponseDto
 
     // -------------------------------------------------------- Catalogos
     @GET("lineas/")

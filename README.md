@@ -88,7 +88,7 @@ proyecto se entregó en tres fases incrementales sobre el mismo monorepo:
 | QR web | **qrcode-generator (CDN)** | Render del código de pago |
 | Mobile | **Kotlin 2.0.21 + Jetpack Compose + Material 3** | App Android nativa |
 | Red mobile | **Retrofit 2.11 + OkHttp 4.12 + Gson** | Cliente REST con JWT |
-| Mapas mobile | **OSMDroid 6.1.20** | Mapa oscuro sin Google Play Services |
+| Mapas mobile | **OSMDroid 6.1.20 + Esri Dark Gray** | Mapa oscuro sin Google Play Services ni API key |
 | QR mobile | **ZXing core 3.5.3** | Render local del QR |
 | Contenedores | **Docker + Compose v2** | Orquestación local y despliegue |
 
@@ -784,6 +784,7 @@ conexiones ≈ replicas_backend × GUNICORN_WORKERS × GUNICORN_THREADS
 | Token de sesión | Solo hash SHA-256 en `token_sesion_activa` |
 | Anti-spoofing GPS | Haversine + `calcular_velocidad_kmh`; rechaza > 130 km/h con HTTP 422 |
 | Validación de entrada | Serializers DRF; RUT/patente con dígito verificador |
+| Auto-registro seguro | `/api/auth/registro/` fuerza rol `CLIENTE`, email único, RUT módulo 11 y política de contraseñas; no permite crear ADMIN/CONDUCTOR |
 | Pagos | UUID único, monto > 0, estado controlado, `PROTECT` en FKs |
 | Throttling | `AnonRateThrottle 60/min`, `UserRateThrottle 600/min` |
 | Secretos | `.env` fuera de Git; `.env.example` como contrato |
@@ -798,6 +799,7 @@ conexiones ≈ replicas_backend × GUNICORN_WORKERS × GUNICORN_THREADS
 |---|---|---|---|
 | POST | `/api/auth/login/` | Público | Login Argon2id + anti-fuerza bruta |
 | POST | `/api/auth/refresh/` | Público | Renovar access token |
+| POST | `/api/auth/registro/` | Público | Auto-registro de pasajeros (siempre rol `CLIENTE`) |
 | GET | `/api/lineas/` | Público | Catálogo de recorridos |
 | GET | `/api/paraderos/` | Público | Paraderos por línea/comuna |
 | GET | `/api/vehiculos/` | JWT | Flota |
@@ -863,6 +865,7 @@ Esquema: **`/api/schema/`** (OpenAPI 3).
 |---|---|---|---|
 | POST | `/api/auth/login/` | Público | `{email, password}` → `{access, refresh, usuario, access_expires_in}` |
 | POST | `/api/auth/refresh/` | Público | `{refresh}` → `{access}` |
+| POST | `/api/auth/registro/` | Público | `{rut, nombre, email, password, password_confirm}` → `{access, refresh, usuario.rol=CLIENTE}` |
 | POST | `/api/admin-api/conductores/registro/` | Admin | Alta de conductor con usuario y vehículo |
 | GET | `/api/admin-api/conductores/` | Admin | Listado paginado con búsqueda |
 | POST | `/api/admin-api/lineas/` | Admin | Crear/actualizar línea |
@@ -969,8 +972,10 @@ organizada con **MVVM + Clean Architecture**.
 
 **Pantallas obligatorias cubiertas**
 
-- Login unificado con detección de rol y campo OTP.
-- Pasajero: mapa OSMDroid, ETA, cupos y pago QR en dos toques.
+- Login unificado con detección de rol, campo OTP y enlace de **auto-registro**
+  para pasajeros nuevos.
+- Pasajero: mapa OSMDroid con teselas Esri Dark (sin API key), ETA, cupos y
+  pago QR en dos toques.
 - Conductor: pantalla oscura de alto contraste, botones grandes, OTP de turno,
   cambio de asiento, GPS periódico y alerta visual/sonora de pago QR
   (`ToneGenerator`).
@@ -1106,7 +1111,9 @@ docker compose --profile mongo-local up -d --build
 | Backend reinicia en loop | Credenciales MySQL incorrectas o DB no lista | Revisar `.env`, `docker compose logs db_mysql` |
 | `/api/docs/` sin estilos | Falta `collectstatic` en imagen | Reconstruir (`--build`) |
 | App Android no conecta | URL de API incorrecta | Ajustar `CONATACOCH_API_BASE_URL` (`10.0.2.2` en emulador) |
-| Mapa Android vacío | Sin red o tiles bloqueados | Verificar conexión; OSMDroid usa Carto/OSM |
+| Mapa Android muestra «API KEY REQUIRED» | Versión antigua usaba CARTO | Actualizar la app: usa Esri Dark Gray sin API key |
+| Mapa Android vacío | Sin red o tiles bloqueados | Verificar conexión; OSMDroid usa Esri Dark Gray |
+| App Android no conecta en emulador | Backend en `127.0.0.1` o `DEBUG=False` | `runserver 0.0.0.0:8000`, `DEBUG=True` y `10.0.2.2:8000/api/` |
 | QR no se dibuja | ZXing no pudo codificar | Revisar UUID y tamaño; regenerar pago |
 | TTL no borra documentos | Monitor TTL corre cada ~60 s o índice ausente | Ejecutar `init_mongo_indexes`; esperar |
 | Seed lento en MySQL | 660 líneas + 1.320 paraderos | Normal en primer arranque; usar `--skip-paraderos` en pruebas |

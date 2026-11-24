@@ -25,9 +25,10 @@ from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from core import mongo
 from core.models import Conductor, LineaColectiva, Usuario
@@ -38,6 +39,7 @@ from core.serializers_fase3 import (
     ConductorAdminCreateSerializer,
     ConductorAdminUpdateSerializer,
     LineaUpsertSerializer,
+    RegistroClienteSerializer,
 )
 
 logger = logging.getLogger("core.views_fase3")
@@ -58,6 +60,61 @@ def _edad_segundos(valor) -> int | None:
     if timezone.is_naive(valor):
         valor = valor.replace(tzinfo=dt_timezone.utc)
     return max(0, int((timezone.now() - valor).total_seconds()))
+
+
+# =============================================================================
+# AUTENTICACION - AUTO-REGISTRO DE PASAJEROS
+# =============================================================================
+class RegistroClienteView(APIView):
+    """Registro publico de pasajeros con rol CLIENTE.
+
+    Devuelve la misma estructura que ``/api/auth/login/`` para que la app
+    pueda iniciar sesion inmediatamente despues de crear la cuenta. El rol
+    nunca se acepta desde el cliente: se fuerza a CLIENTE.
+    """
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["Autenticacion"],
+        request=RegistroClienteSerializer,
+        responses={201: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
+    def post(self, request):
+        serializer = RegistroClienteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            usuario = serializer.save()
+        except IntegrityError as exc:
+            logger.warning("Registro rechazado por integridad: %s", exc)
+            return Response(
+                {
+                    "error": "conflicto_registro",
+                    "detail": "El RUT o el email ya estan registrados.",
+                    "status_code": status.HTTP_409_CONFLICT,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        refresh = RefreshToken.for_user(usuario)
+        logger.info("Auto-registro de pasajero: %s", usuario.email)
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "usuario": {
+                    "id": usuario.id,
+                    "rut": usuario.rut,
+                    "nombre": usuario.nombre,
+                    "email": usuario.email,
+                    "rol": usuario.rol,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 # =============================================================================

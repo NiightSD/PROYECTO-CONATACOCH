@@ -30,6 +30,14 @@ data class UsuarioDto(
 data class LoginRequestDto(val email: String, val password: String)
 data class RefreshRequestDto(val refresh: String)
 
+data class RegistroRequestDto(
+    val rut: String,
+    val nombre: String,
+    val email: String,
+    val password: String,
+    @SerializedName("password_confirm") val passwordConfirm: String,
+)
+
 data class LoginResponseDto(
     val access: String? = null,
     val refresh: String? = null,

@@ -16,6 +16,10 @@ amarillo `#FFD100`**.
 ### 1.1 Acceso unificado
 
 - Un solo formulario de login (`POST /api/auth/login/`).
+- **Auto-registro de pasajeros** desde el enlace *“¿No tienes cuenta?
+  Regístrate como pasajero”* (`POST /api/auth/registro/`). El backend valida
+  RUT chileno, email único y política de contraseñas, asigna siempre el rol
+  `CLIENTE` y devuelve los JWT para entrar sin un segundo paso.
 - El rol se detecta desde la respuesta del backend (`CONDUCTOR`, `ADMIN`,
   `CLIENTE`) y la app navega automáticamente a la pantalla correspondiente.
 - Campo OTP opcional de 6 dígitos para que un conductor active su turno justo
@@ -27,8 +31,10 @@ amarillo `#FFD100`**.
 ### 1.2 Pasajero
 
 - Búsqueda de recorridos por folio, comuna o nombre (`GET /api/lineas/`).
-- Mapa **OSMDroid** con tema oscuro, marcador del pasajero y marcadores de la
-  flota en vivo (`GET /api/telemetria/flota/?linea_id=`).
+- Mapa **OSMDroid** con teselas oscuras de **Esri World Dark Gray Base**
+  (sin API key), marcador del pasajero y marcadores de la flota en vivo
+  (`GET /api/telemetria/flota/?linea_id=`). Se reemplazó CARTO porque ese
+  proveedor ahora responde con la imagen *“API KEY REQUIRED”*.
 - Tarjeta de **ETA más cercano**: minutos, distancia, patente y cupos
   (`POST /api/eta/calcular/`).
 - Actualización automática cada 12 segundos.
@@ -127,6 +133,7 @@ fábricas personalizadas.
 | Retrofit / OkHttp | 2.11.0 / 4.12.0 |
 | Coroutines | 1.9.0 |
 | OSMDroid | 6.1.20 |
+| Teselas del mapa | Esri World Dark Gray Base (sin API key) |
 | ZXing core | 3.5.3 |
 | Security Crypto | 1.1.0-alpha06 |
 
@@ -192,19 +199,86 @@ Instalar en un emulador o dispositivo conectado:
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-### 5.3 Android Studio
+### 5.3 Abrir en Android Studio
 
-1. **File → Open** y seleccionar la carpeta `android-app/`.
-2. Esperar la sincronización de Gradle (descarga dependencias la primera vez).
-3. Crear un dispositivo virtual (API 34/35) o conectar un teléfono con
+1. **File → Open** y seleccionar la carpeta `android-app/` (no la raíz del
+   monorepo).
+2. Esperar la sincronización de Gradle (la primera vez descarga dependencias).
+3. Verificar **File → Project Structure → SDK Location**: usar JDK 17
+   (`C:\Program Files\Java\jdk-17`) y Android SDK 35.
+4. Crear un dispositivo virtual (API 34/35) o conectar un teléfono con
    depuración USB.
-4. Verificar que el backend esté arriba y que `CONATACOCH_API_BASE_URL` apunte
+5. Verificar que el backend esté arriba y que `CONATACOCH_API_BASE_URL` apunte
    al host correcto.
-5. **Run ▶**.
+6. **Run ▶** sobre `app`.
 
-Si se usa el backend con `docker-compose.dev.yml`, está expuesto en
-`http://localhost:8000`; desde el emulador se accede como
-`http://10.0.2.2:8000`.
+### 5.4 Levantar el backend y conectar el emulador
+
+**Opción A — backend local con SQLite (rápido para probar el login):**
+
+```powershell
+cd backend
+$env:DEBUG="True"
+$env:DB_ENGINE="django.db.backends.sqlite3"
+$env:SQLITE_PATH="$env:TEMP\conatacoch_dev.sqlite3"
+$env:SECRET_KEY="dev-only-cambiar-en-produccion"
+$env:MONGO_MOCK="1"   # o definir MONGO_ATLAS_URI
+..\.venv\Scripts\python.exe manage.py migrate
+..\.venv\Scripts\python.exe manage.py seed_conatacoch
+..\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+**Opción B — Docker con perfil de desarrollo:**
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Ambas opciones publican el puerto `8000`. Comprobar desde el PC:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/api/health/
+```
+
+Desde el **emulador Android**, el host del PC es `10.0.2.2`. La URL por
+defecto ya es:
+
+```properties
+CONATACOCH_API_BASE_URL=http://10.0.2.2:8000/api/
+```
+
+Con `DEBUG=True`, `ALLOWED_HOSTS` agrega automáticamente `10.0.2.2`,
+`localhost`, `127.0.0.1` y `0.0.0.0`. Si se ejecuta con `DEBUG=False` hay que
+declararlos explícitamente en la variable `ALLOWED_HOSTS`.
+
+**Celular físico por USB (sin depender de la IP de la LAN):**
+
+```powershell
+adb reverse tcp:8000 tcp:8000
+```
+
+Luego usar `http://127.0.0.1:8000/api/` en `android-app/local.properties` o
+`gradle.properties` y reconstruir la app:
+
+```properties
+CONATACOCH_API_BASE_URL=http://127.0.0.1:8000/api/
+```
+
+> `adb reverse` solo funciona con el dispositivo conectado por USB y la
+> depuración habilitada. En emulador no se necesita: `10.0.2.2` ya es el host.
+
+### 5.5 Si aparece «No se pudo conectar con la API»
+
+| Causa | Verificación | Solución |
+|---|---|---|
+| Backend detenido | `Invoke-RestMethod http://localhost:8000/api/health/` | Levantar `runserver 0.0.0.0:8000` o Compose |
+| Django escucha solo en loopback | El comando dice `127.0.0.1:8000` | Usar `runserver 0.0.0.0:8000` |
+| `DisallowedHost` (HTTP 400) | Log de Django muestra el host rechazado | `$env:DEBUG="True"` o agregar el host a `ALLOWED_HOSTS` |
+| URL equivocada en el APK | La app muestra la URL bajo las credenciales demo | Emulador: `10.0.2.2`; celular USB: `127.0.0.1` + `adb reverse`; LAN: IP del PC |
+| Firewall de Windows | El navegador del emulador no abre `/api/health/` | Permitir Python/Java en red privada o usar `adb reverse` |
+| APK antiguo | Se cambió la URL o el XML y no se reinstaló | `.\gradlew.bat :app:installDebug` |
+| Mapa con «API KEY REQUIRED» | La app usa teselas CARTO | Actualizar a la versión actual (Esri Dark, sin API key) |
+| Mapa vacío con backend arriba | Sin telemetría en MongoDB | Iniciar turno del conductor o revisar `MONGO_MOCK`/Atlas |
 
 ---
 
@@ -227,6 +301,7 @@ producción.
 |---|---|---|
 | POST | `/api/auth/login/` | Login unificado y detección de rol |
 | POST | `/api/auth/refresh/` | Renovación automática de JWT |
+| POST | `/api/auth/registro/` | Auto-registro público de pasajeros (rol `CLIENTE`) |
 | GET | `/api/lineas/` | Búsqueda de recorridos |
 | GET | `/api/paraderos/?linea=` | Paraderos del recorrido |
 | GET | `/api/vehiculos/?linea=` | Flota de la línea |
@@ -245,8 +320,12 @@ producción.
 
 ## 8. Permisos y seguridad
 
-- `INTERNET`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` y `VIBRATE`
-  declarados en `AndroidManifest.xml`.
+- `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_FINE_LOCATION`,
+  `ACCESS_COARSE_LOCATION` y `VIBRATE` declarados en `AndroidManifest.xml`.
+- `network_security_config.xml` permite HTTP en claro solo para desarrollo
+  (`10.0.2.2`, `localhost`, `127.0.0.1`); el resto debe usar HTTPS.
+- El registro público solo crea rol `CLIENTE`; el backend ignora cualquier
+  intento de enviar `rol` y valida RUT, email único y contraseña con Argon2id.
 - El usuario concede ubicación en tiempo de ejecución; si la niega, la app sigue
   operando con la ubicación simulada de Santiago para fines de demostración.
 - El token de acceso nunca se escribe en logs (`HttpLoggingInterceptor` en nivel
