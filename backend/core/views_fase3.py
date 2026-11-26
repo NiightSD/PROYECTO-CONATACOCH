@@ -28,7 +28,9 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core import mongo
 from core.models import Conductor, LineaColectiva, Usuario
@@ -115,6 +117,43 @@ class RegistroClienteView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+# =============================================================================
+# JWT - /api/token/ con rol explicito
+# =============================================================================
+class TokenConRolSerializer(TokenObtainPairSerializer):
+    """Agrega `rol` y datos del usuario al token y a la respuesta de /api/token/.
+
+    SimpleJWT por defecto solo devuelve access/refresh. El panel web y la app
+    necesitan el rol exacto (ADMIN, CONDUCTOR, CLIENTE) sin una llamada extra.
+    """
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["rol"] = user.rol
+        token["email"] = user.email
+        token["nombre"] = user.nombre
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data["rol"] = self.user.rol
+        data["usuario"] = {
+            "id": self.user.id,
+            "rut": self.user.rut,
+            "nombre": self.user.nombre,
+            "email": self.user.email,
+            "rol": self.user.rol,
+        }
+        return data
+
+
+class TokenObtainPairConRolView(TokenObtainPairView):
+    """Vista de obtencion de JWT con rol para /api/token/."""
+
+    serializer_class = TokenConRolSerializer
 
 
 # =============================================================================

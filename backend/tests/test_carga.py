@@ -14,17 +14,17 @@ import os
 import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
-# Credenciales de prueba
+# Credenciales demo creadas por `manage.py seed_conatacoch` (fallback).
 CREDENTIALS = {
-    "conductor": {"email": "conductor@test.cl", "password": "ConducPass123!"},
-    "cliente": {"email": "cliente@test.cl", "password": "PasajeroPass123!"},
-    "admin": {"email": "admin@test.cl", "password": "AdminPass123!"},
+    "conductor": {"email": "conductor1@conatacoch.cl", "password": "Conduc2026!"},
+    "cliente": {"email": "pasajero1@conatacoch.cl", "password": "Pasajero2026!"},
+    "admin": {"email": "admin@conatacoch.cl", "password": "AdminConata2026!"},
 }
 
 # Cuentas sinteticas creadas por `manage.py seed_carga`.
@@ -130,7 +130,12 @@ def obtener_token_email(cliente_http, email, password=PASSWORD_CARGA):
 
 
 def enviar_gps_un_vehiculo(cliente_http, token, vehiculo_id, indice):
-    """Simula un vehiculo enviando un punto de telemetria GPS."""
+    """Simula un vehiculo enviando un punto de telemetria GPS.
+
+    Cada punto lleva un timestamp separado 5 s para que el filtro cinematico
+    anti-spoofing (Haversine + umbral 130 km/h) no rechace la prueba por
+    diferencias de tiempo cercanas a cero entre peticiones concurrentes.
+    """
     headers = {"Authorization": f"Bearer {token}"}
     payload = {
         "latitud": -33.4489 + (indice * 0.0001),
@@ -138,6 +143,9 @@ def enviar_gps_un_vehiculo(cliente_http, token, vehiculo_id, indice):
         "velocidad_kmh": 40.0 + (indice % 30),
         "rumbo": 180.0,
         "cupos_disponibles": 4,
+        "timestamp": (
+            datetime.now(timezone.utc) - timedelta(seconds=(60 - indice) * 5)
+        ).isoformat(),
     }
     return medir_latencia(
         cliente_http.post,
@@ -148,11 +156,11 @@ def enviar_gps_un_vehiculo(cliente_http, token, vehiculo_id, indice):
     )
 
 
-def consultar_eta_un_pasajero(cliente_http, token, indice):
+def consultar_eta_un_pasajero(cliente_http, token, indice, linea_id):
     """Simula un pasajero consultando ETA."""
     headers = {"Authorization": f"Bearer {token}"}
     payload = {
-        "linea_id": 1,
+        "linea_id": linea_id,
         "latitud_pasajero": -33.4489 + (indice * 0.0001),
         "longitud_pasajero": -70.6693 + (indice * 0.0001),
     }
@@ -163,6 +171,29 @@ def consultar_eta_un_pasajero(cliente_http, token, indice):
         headers=headers,
         timeout=10.0,
     )
+
+
+def resolver_linea_conductor(cliente_http, token):
+    """Obtiene el id de la linea del conductor demo (folio 234001).
+
+    `seed_conatacoch` asigna el vehiculo ABCD-12 a esa linea, por lo que es la
+    linea que tiene conductores en turno y telemetria en la prueba de carga.
+    """
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        resp = cliente_http.get(
+            f"{BASE_URL}/api/lineas/?folio=234001&page_size=1",
+            headers=headers,
+            timeout=10.0,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            filas = data.get("results", data if isinstance(data, list) else [])
+            if filas:
+                return int(filas[0]["id"])
+    except Exception:
+        pass
+    return 351
 
 
 def ejecutar_prueba_carga_telemetria(num_vehiculos=50):
@@ -236,8 +267,12 @@ def ejecutar_prueba_carga_eta(num_pasajeros=100):
         elif len(tokens_validos) < num_pasajeros:
             tokens_validos += [tokens_validos[-1]] * (num_pasajeros - len(tokens_validos))
 
+        linea_id = resolver_linea_conductor(client, tokens_validos[0])
+
         def tarea(indice):
-            return consultar_eta_un_pasajero(client, tokens_validos[indice], indice)
+            return consultar_eta_un_pasajero(
+                client, tokens_validos[indice], indice, linea_id
+            )
 
         inicio = time.perf_counter()
         with ThreadPoolExecutor(max_workers=num_pasajeros) as executor:

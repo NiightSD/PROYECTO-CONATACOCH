@@ -185,6 +185,7 @@ fun PassengerScreen(
                     ConatacochMap(
                         vehicles = state.fleet,
                         userLocation = state.userLocation,
+                        route = state.paraderos,
                         modifier = Modifier.fillMaxSize(),
                     )
                     Surface(

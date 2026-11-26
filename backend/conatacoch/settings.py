@@ -2,10 +2,42 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _cargar_env_local() -> None:
+    """Carga `.env` (raiz del repo o backend) sin pisar variables exportadas.
+
+    En Docker las variables llegan por `environment:`; en local este loader
+    permite que `manage.py` use exactamente MYSQL_*, MONGO_* y JWT_* del .env.
+    Las variables ya presentes en el proceso siempre tienen prioridad (12-factor).
+    """
+    for ruta in (BASE_DIR.parent / ".env", BASE_DIR / ".env"):
+        if not ruta.is_file():
+            continue
+        try:
+            contenido = ruta.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        for linea in contenido.splitlines():
+            linea = linea.strip()
+            if not linea or linea.startswith("#") or "=" not in linea:
+                continue
+            clave, valor = linea.split("=", 1)
+            clave = clave.strip()
+            if not clave or clave in os.environ:
+                continue
+            os.environ[clave] = valor.strip().strip('"').strip("'")
+
+
+_cargar_env_local()
+
+# pytest siempre corre con SQLite salvo que se fuerce DB_ENGINE explicitamente.
+RUNNING_PYTEST = "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ
 
 
 # -----------------------------------------------------------------------------
@@ -59,6 +91,13 @@ if DEBUG:
         if _dev_origin not in CSRF_TRUSTED_ORIGINS:
             CSRF_TRUSTED_ORIGINS.append(_dev_origin)
 
+# CORS solo se aplica con DEBUG=True (panel servido en :8080 o :8000).
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:8080,http://127.0.0.1:8080,"
+    "http://localhost:8000,http://127.0.0.1:8000",
+)
+
 # Nginx termina TLS y propaga X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
@@ -106,6 +145,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.DevCorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -149,9 +189,18 @@ AUTH_PASSWORD_VALIDATORS = [
 # -----------------------------------------------------------------------------
 # Base de datos relacional (MySQL 8 + pool de conexiones)
 # -----------------------------------------------------------------------------
-DB_ENGINE = env("DB_ENGINE", "django.db.backends.mysql")
+DB_ENGINE = env(
+    "DB_ENGINE",
+    "django.db.backends.sqlite3" if RUNNING_PYTEST else "django.db.backends.mysql",
+)
 DB_WAIT_RETRIES = env_int("DB_WAIT_RETRIES", 30)
 DB_WAIT_DELAY = env_int("DB_WAIT_DELAY", 2)
+
+# Backend propio: hereda el oficial de MySQL y relaja el minimo de MariaDB
+# (Django 5.2 pide 10.5; el entorno academico local usa 10.4, compatible).
+DB_BACKEND = (
+    "core.db_backend" if DB_ENGINE.endswith(("mysql", "mariadb")) else DB_ENGINE
+)
 
 if DB_ENGINE.endswith("sqlite3"):
     DATABASES = {
@@ -164,7 +213,7 @@ if DB_ENGINE.endswith("sqlite3"):
 else:
     DATABASES = {
         "default": {
-            "ENGINE": DB_ENGINE,
+            "ENGINE": DB_BACKEND,
             "NAME": env("MYSQL_DATABASE", "conatacoch"),
             "USER": env("MYSQL_USER", "conatacoch"),
             "PASSWORD": env("MYSQL_PASSWORD", "conatacoch_2026"),
@@ -302,7 +351,8 @@ MONGO_MAX_POOL_SIZE = env_int("MONGO_MAX_POOL_SIZE", 50)
 MONGO_MIN_POOL_SIZE = env_int("MONGO_MIN_POOL_SIZE", 5)
 MONGO_TIMEOUT_MS = env_int("MONGO_TIMEOUT_MS", 5000)
 # Solo para pruebas de carga locales sin servidor MongoDB real.
-MONGO_MOCK = env_bool("MONGO_MOCK", False)
+# pytest usa mongomock automaticamente (ver tests/conftest.py).
+MONGO_MOCK = env_bool("MONGO_MOCK", RUNNING_PYTEST)
 
 
 # -----------------------------------------------------------------------------

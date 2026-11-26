@@ -10,8 +10,9 @@ Garantias:
   * update_or_create por clave natural => puede ejecutarse N veces sin duplicar.
   * Lee el dataset oficial de recorridos (660 itinerarios, Region 13).
   * Crea paraderos base georreferenciados para cada recorrido.
-  * Crea usuarios/vehiculos/conductores demo con passwords hasheados (PBKDF2).
+  * Crea usuarios/vehiculos/conductores/clientes demo con passwords Argon2id.
   * Secretos TOTP cifrados y token de sesion hasheado (nunca texto plano).
+  * Intenta crear los indices 2dsphere/TTL de MongoDB (Atlas o fallback local).
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from core.models import (
+    Cliente,
     Conductor,
     LineaColectiva,
     Paradero,
@@ -101,6 +103,28 @@ CREDENCIALES_DEMO = {
     "conductor2": ("33.333.333-3", "conductor2@conatacoch.cl", "Conduc2026!"),
     "pasajero1": ("44.444.444-4", "pasajero1@conatacoch.cl", "Pasajero2026!"),
     "pasajero2": ("55.555.555-5", "pasajero2@conatacoch.cl", "Pasajero2026!"),
+}
+
+# Datos verosimiles para que las tablas se vean reales en phpMyAdmin.
+NOMBRES_DEMO = {
+    "admin": "Camila Rojas Contreras",
+    "conductor1": "Jorge Fuentes Sepúlveda",
+    "conductor2": "Luis Herrera Molina",
+    "pasajero1": "Valentina Soto Muñoz",
+    "pasajero2": "Diego Ramírez Vera",
+}
+
+PERFILES_CLIENTE = {
+    "pasajero1": {
+        "telefono": "+569 8123 4567",
+        "direccion": "Av. Vicuña Mackenna 1420",
+        "comuna": "Santiago",
+    },
+    "pasajero2": {
+        "telefono": "+569 7766 5544",
+        "direccion": "Gran Avenida 9080",
+        "comuna": "La Florida",
+    },
 }
 
 
@@ -335,12 +359,12 @@ class Command(BaseCommand):
         return base64.b32encode(secrets.token_bytes(10)).decode("ascii").rstrip("=")
 
     def _cargar_usuarios(self, linea_uno: LineaColectiva, linea_dos: LineaColectiva) -> dict[str, int]:
-        stats = {"usuarios": 0, "vehiculos": 0, "conductores": 0}
+        stats = {"usuarios": 0, "vehiculos": 0, "conductores": 0, "clientes": 0}
 
         admin, _ = self._upsert_usuario(
             rut=CREDENCIALES_DEMO["admin"][0],
             email=CREDENCIALES_DEMO["admin"][1],
-            nombre="Administrador CONATACOCH",
+            nombre=NOMBRES_DEMO["admin"],
             password=CREDENCIALES_DEMO["admin"][2],
             rol=Usuario.Rol.ADMIN,
             is_staff=True,
@@ -352,32 +376,39 @@ class Command(BaseCommand):
         conductor1, _ = self._upsert_usuario(
             rut=CREDENCIALES_DEMO["conductor1"][0],
             email=CREDENCIALES_DEMO["conductor1"][1],
-            nombre="Conductor Demo Uno",
+            nombre=NOMBRES_DEMO["conductor1"],
             password=CREDENCIALES_DEMO["conductor1"][2],
             rol=Usuario.Rol.CONDUCTOR,
         )
         conductor2, _ = self._upsert_usuario(
             rut=CREDENCIALES_DEMO["conductor2"][0],
             email=CREDENCIALES_DEMO["conductor2"][1],
-            nombre="Conductor Demo Dos",
+            nombre=NOMBRES_DEMO["conductor2"],
             password=CREDENCIALES_DEMO["conductor2"][2],
             rol=Usuario.Rol.CONDUCTOR,
         )
-        self._upsert_usuario(
+        pasajero1, _ = self._upsert_usuario(
             rut=CREDENCIALES_DEMO["pasajero1"][0],
             email=CREDENCIALES_DEMO["pasajero1"][1],
-            nombre="Pasajero Demo Uno",
+            nombre=NOMBRES_DEMO["pasajero1"],
             password=CREDENCIALES_DEMO["pasajero1"][2],
             rol=Usuario.Rol.CLIENTE,
         )
-        self._upsert_usuario(
+        pasajero2, _ = self._upsert_usuario(
             rut=CREDENCIALES_DEMO["pasajero2"][0],
             email=CREDENCIALES_DEMO["pasajero2"][1],
-            nombre="Pasajero Demo Dos",
+            nombre=NOMBRES_DEMO["pasajero2"],
             password=CREDENCIALES_DEMO["pasajero2"][2],
             rol=Usuario.Rol.CLIENTE,
         )
         stats["usuarios"] += 4
+
+        for clave, usuario in (("pasajero1", pasajero1), ("pasajero2", pasajero2)):
+            Cliente.objects.update_or_create(
+                usuario=usuario,
+                defaults=PERFILES_CLIENTE[clave],
+            )
+            stats["clientes"] += 1
 
         vehiculo1, _ = Vehiculo.objects.update_or_create(
             patente="ABCD-12",
@@ -438,7 +469,7 @@ class Command(BaseCommand):
             if not options["skip_paraderos"]:
                 paraderos_creados, paraderos_actualizados = self._cargar_paraderos()
 
-            stats_usuarios = {"usuarios": 0, "vehiculos": 0, "conductores": 0}
+            stats_usuarios = {"usuarios": 0, "vehiculos": 0, "conductores": 0, "clientes": 0}
             if not options["skip_usuarios"]:
                 linea_uno = self._linea_demo(234001)
                 linea_dos = self._linea_demo(236001)
@@ -455,13 +486,37 @@ class Command(BaseCommand):
         self.stdout.write(f"  Usuarios demo       : {stats_usuarios['usuarios']}")
         self.stdout.write(f"  Vehiculos demo      : {stats_usuarios['vehiculos']}")
         self.stdout.write(f"  Conductores demo    : {stats_usuarios['conductores']}")
+        self.stdout.write(f"  Clientes demo       : {stats_usuarios['clientes']}")
         self.stdout.write(f"  Totales en BD       : lineas={LineaColectiva.objects.count()} "
                           f"paraderos={Paradero.objects.count()} usuarios={Usuario.objects.count()} "
-                          f"vehiculos={Vehiculo.objects.count()} conductores={Conductor.objects.count()}")
+                          f"vehiculos={Vehiculo.objects.count()} conductores={Conductor.objects.count()} "
+                          f"clientes={Cliente.objects.count()}")
         self.stdout.write(self.style.SUCCESS(f"[seed] Completado en {duracion}s (idempotente)."))
 
         if not options["skip_usuarios"]:
             self.stdout.write("")
             self.stdout.write("[seed] Credenciales demo (cambiar en produccion):")
             for clave, (rut, email, password) in CREDENCIALES_DEMO.items():
-                self.stdout.write(f"  {clave:<11} RUT={rut}  email={email}  password={password}")
+                self.stdout.write(
+                    f"  {clave:<11} nombre={NOMBRES_DEMO[clave]:<28} "
+                    f"RUT={rut}  email={email}  password={password}"
+                )
+
+        # Indices de telemetria: no abortan el seed si Atlas no responde.
+        if not getattr(settings, "MONGO_MOCK", False):
+            try:
+                from core import mongo
+
+                nombres = mongo.ensure_indexes()
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        "[seed] Indices MongoDB: " + ", ".join(nombres.values())
+                    )
+                )
+            except Exception as exc:  # pragma: no cover - depende de Atlas
+                mongo.reset_client()
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"[seed] MongoDB sin indices (revisa MONGO_ATLAS_URI): {exc}"
+                    )
+                )

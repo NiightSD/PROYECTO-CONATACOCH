@@ -84,6 +84,23 @@ def get_client():
     return _client
 
 
+def reset_client() -> None:
+    """Cierra y descarta el cliente singleton.
+
+    Se usa cuando Atlas rechaza las credenciales: sin esto PyMongo mantiene un
+    monitor en segundo plano reintentando y llenando el log de errores. La
+    proxima llamada a `get_client()` vuelve a intentar la conexion.
+    """
+    global _client
+    with _client_lock:
+        cliente, _client = _client, None
+    if cliente is not None:
+        try:
+            cliente.close()
+        except Exception:  # pragma: no cover - cierre defensivo
+            pass
+
+
 def get_database():
     return get_client()[settings.MONGO_DB_NAME]
 

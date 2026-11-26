@@ -11,7 +11,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from core.models import Conductor, LineaColectiva, Usuario, Vehiculo
+from core.models import Conductor, Cliente, LineaColectiva, Usuario, Vehiculo
 from core.serializers_fase2 import validar_patente_chilena, validar_rut_chileno
 
 
@@ -180,6 +180,15 @@ class RegistroClienteSerializer(serializers.Serializer):
     rut = serializers.CharField(max_length=12)
     nombre = serializers.CharField(max_length=150)
     email = serializers.EmailField(max_length=254)
+    telefono = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, default=""
+    )
+    comuna = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, default=""
+    )
+    direccion = serializers.CharField(
+        max_length=200, required=False, allow_blank=True, default=""
+    )
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
 
@@ -214,17 +223,26 @@ class RegistroClienteSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data: dict) -> Usuario:
+        from django.db import transaction
+
         validated_data.pop("password_confirm", None)
+        perfil = {
+            "telefono": validated_data.pop("telefono", ""),
+            "comuna": validated_data.pop("comuna", ""),
+            "direccion": validated_data.pop("direccion", ""),
+        }
         password = validated_data.pop("password")
-        usuario = Usuario(
-            rut=validated_data["rut"],
-            nombre=validated_data["nombre"],
-            email=validated_data["email"],
-            rol=Usuario.Rol.CLIENTE,
-            activo=True,
-        )
-        usuario.set_password(password)
-        usuario.save()
+        with transaction.atomic():
+            usuario = Usuario(
+                rut=validated_data["rut"],
+                nombre=validated_data["nombre"],
+                email=validated_data["email"],
+                rol=Usuario.Rol.CLIENTE,
+                activo=True,
+            )
+            usuario.set_password(password)
+            usuario.save()
+            Cliente.objects.get_or_create(usuario=usuario, defaults=perfil)
         return usuario
 
 

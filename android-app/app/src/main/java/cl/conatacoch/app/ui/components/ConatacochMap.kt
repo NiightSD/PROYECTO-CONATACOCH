@@ -3,8 +3,10 @@ package cl.conatacoch.app.ui.components
 import android.graphics.Color as AndroidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -14,6 +16,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import cl.conatacoch.app.R
 import cl.conatacoch.app.domain.model.FleetVehicle
+import cl.conatacoch.app.domain.model.Paradero
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
@@ -21,21 +24,26 @@ import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.CopyrightOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 
 /**
  * Mapa OSMDroid con tema oscuro alineado a la paleta CONATACOCH.
  *
- * Muestra la flota en vivo (marcadores amarillos) y, si existe, la ubicacion
- * del pasajero (marcador blanco). La primera vez ajusta el zoom a los puntos.
+ * Dibuja el trazado del recorrido seleccionado (polilínea amarilla sobre los
+ * paraderos), la flota en vivo (marcadores amarillos) y, si existe, la
+ * ubicación del pasajero (marcador blanco). Al cambiar de recorrido vuelve a
+ * ajustar el zoom a los puntos.
  */
 @Composable
 fun ConatacochMap(
     vehicles: List<FleetVehicle>,
     userLocation: Pair<Double, Double>?,
+    route: List<Paradero> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val fitted = remember { mutableStateOf(false) }
+    var lastRouteKey by remember { mutableStateOf("") }
     val attribution = remember {
         CopyrightOverlay(context).apply {
             setTextColor(AndroidColor.argb(190, 255, 255, 255))
@@ -78,6 +86,23 @@ fun ConatacochMap(
             val vehicleIcon = ContextCompat.getDrawable(context, R.drawable.ic_vehicle_marker)
             val userIcon = ContextCompat.getDrawable(context, R.drawable.ic_user_marker)
             val points = mutableListOf<GeoPoint>()
+
+            // Trazado del recorrido seleccionado: une los paraderos en orden.
+            val routeKey = route.joinToString(",") { it.id.toString() }
+            if (routeKey != lastRouteKey) {
+                lastRouteKey = routeKey
+                fitted.value = false
+            }
+            val routePoints = route.map { GeoPoint(it.latitud, it.longitud) }
+            if (routePoints.size >= 2) {
+                Polyline(map).apply {
+                    setPoints(routePoints)
+                    outlinePaint.color = AndroidColor.parseColor("#FFD100")
+                    outlinePaint.strokeWidth = 8f
+                    outlinePaint.isAntiAlias = true
+                }.also { map.overlays.add(it) }
+                points.addAll(routePoints)
+            }
 
             userLocation?.let { (lat, lng) ->
                 val point = GeoPoint(lat, lng)

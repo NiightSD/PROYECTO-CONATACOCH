@@ -165,6 +165,44 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
 
 # -----------------------------------------------------------------------------
+# Cliente (perfil de pasajero)
+# -----------------------------------------------------------------------------
+class Cliente(models.Model):
+    """Datos de contacto propios del pasajero (rol CLIENTE).
+
+    La identidad y las credenciales viven en `Usuario`; aqui solo se guardan
+    atributos que no aplican a ADMIN ni a CONDUCTOR (3FN: dependen del perfil
+    de cliente, no de la cuenta). Se crea automaticamente al auto-registrarse.
+    """
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        verbose_name="usuario cliente",
+        on_delete=models.PROTECT,
+        related_name="cliente",
+        limit_choices_to={"rol": Usuario.Rol.CLIENTE},
+    )
+    telefono = models.CharField("telefono", max_length=20, blank=True, default="")
+    direccion = models.CharField("direccion", max_length=200, blank=True, default="")
+    comuna = models.CharField(
+        "comuna", max_length=100, blank=True, default=""
+    )
+    fecha_registro = models.DateTimeField("fecha de registro", default=timezone.now)
+
+    class Meta:
+        db_table = "cliente"
+        verbose_name = "cliente"
+        verbose_name_plural = "clientes"
+        ordering = ["usuario__nombre"]
+        indexes = [
+            models.Index(fields=["comuna"], name="idx_cliente_comuna"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.usuario.nombre} ({self.usuario.rut})"
+
+
+# -----------------------------------------------------------------------------
 # LineaColectiva
 # -----------------------------------------------------------------------------
 class LineaColectiva(models.Model):

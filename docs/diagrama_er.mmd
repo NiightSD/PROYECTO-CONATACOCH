@@ -1,0 +1,99 @@
+%% CONATACOCH - Diagrama Entidad-Relacion (Fase 3)
+%% Motor: MySQL 8.0 / MariaDB >= 10.4  |  Esquema: conatacoch (3FN)
+%% Nombres de entidad = nombre real de la tabla (db_table de Django).
+%% Equivalencias con el vocabulario del informe:
+%%   USUARIO = Usuarios      CLIENTE = Clientes        CONDUCTOR = Conductores
+%%   LINEA_COLECTIVA = LineasColectivas                VEHICULO = Vehiculos
+%%   PARADERO = Paraderos    TRANSACCION_PAGO = TransaccionesPago
+
+erDiagram
+    USUARIO ||--o| CLIENTE : "perfil de pasajero"
+    USUARIO ||--o| CONDUCTOR : "perfil de conductor"
+    USUARIO ||--o{ TRANSACCION_PAGO : "paga como pasajero"
+    LINEA_COLECTIVA ||--o{ VEHICULO : "asigna"
+    LINEA_COLECTIVA ||--o{ PARADERO : "posee"
+    LINEA_COLECTIVA ||--o{ TRANSACCION_PAGO : "factura"
+    VEHICULO ||--o{ CONDUCTOR : "es conducido por"
+    CONDUCTOR ||--o{ TRANSACCION_PAGO : "cobra"
+
+    USUARIO {
+        bigint id PK "AUTO_INCREMENT"
+        varchar rut UK "RUT chileno validado (mod 11)"
+        varchar nombre "nombre completo"
+        varchar email UK "USERNAME_FIELD del login"
+        varchar password_hash "Argon2id (nunca texto plano)"
+        varchar rol "ADMIN | CONDUCTOR | CLIENTE"
+        boolean activo "borrado logico"
+        smallint intentos_fallidos "bloqueo por fuerza bruta"
+        datetime bloqueado_hasta "NULL si no esta bloqueado"
+        boolean is_superuser "acceso Django admin"
+        boolean is_staff "acceso Django admin"
+        datetime last_login "ultimo acceso exitoso"
+        datetime date_joined "fecha de creacion"
+    }
+
+    CLIENTE {
+        bigint id PK "AUTO_INCREMENT"
+        bigint usuario_id FK,UK "1:1 con USUARIO (rol CLIENTE)"
+        varchar telefono "contacto opcional"
+        varchar direccion "direccion opcional"
+        varchar comuna "comuna de residencia"
+        datetime fecha_registro "alta del perfil"
+    }
+
+    CONDUCTOR {
+        bigint id PK "AUTO_INCREMENT"
+        bigint usuario_id FK,UK "1:1 con USUARIO (rol CONDUCTOR)"
+        varchar folio_conatacoch "folio del movil"
+        bigint vehiculo_id FK "vehiculo asignado"
+        boolean en_turno "turno activo"
+        smallint cupos_disponibles "0..30"
+        varchar otp_secreto "TOTP cifrado con Fernet"
+        varchar otp_codigo "OTP temporal de inicio de turno"
+        datetime otp_codigo_expira "vigencia del OTP"
+        varchar token_sesion_activa "SHA-256 del token de sesion"
+    }
+
+    LINEA_COLECTIVA {
+        bigint id PK "AUTO_INCREMENT"
+        smallint region "region del recorrido"
+        int folio "folio del recorrido"
+        varchar tipo_servicio "URBANO | RURAL"
+        varchar nombre_recorrido "nombre del itinerario"
+        varchar tipo_trazado "PRINCIPAL | ALTERNATIVO"
+        varchar nombre_origen "paradero/calle de origen"
+        varchar comuna_origen "comuna de origen"
+        varchar domicilio_origen "direccion de origen"
+        varchar nombre_destino "paradero/calle de destino"
+        varchar comuna_destino "comuna de destino"
+        varchar domicilio_destino "direccion de destino"
+        decimal tarifa_actual "CLP (10,2)"
+    }
+
+    VEHICULO {
+        bigint id PK "AUTO_INCREMENT"
+        varchar patente UK "formato ABCD-12"
+        varchar marca_modelo "marca y modelo"
+        smallint capacidad_pasajeros "1..30"
+        bigint linea_id FK "linea asignada"
+    }
+
+    PARADERO {
+        bigint id PK "AUTO_INCREMENT"
+        varchar nombre "nombre del paradero"
+        varchar comuna "comuna"
+        decimal latitud "DECIMAL(9,6)"
+        decimal longitud "DECIMAL(9,6)"
+        bigint linea_id FK "linea a la que pertenece"
+    }
+
+    TRANSACCION_PAGO {
+        bigint id PK "AUTO_INCREMENT"
+        char codigo_qr_uuid UK "UUID del QR (CHAR(32))"
+        bigint pasajero_id FK "USUARIO con rol CLIENTE"
+        bigint conductor_id FK "CONDUCTOR que cobra"
+        bigint linea_id FK "LINEA_COLECTIVA del viaje"
+        decimal monto "CLP (12,2), >= 0"
+        datetime fecha_hora "UTC"
+        varchar estado "PENDIENTE | PAGADO | ANULADO | EXPIRADO"
+    }
