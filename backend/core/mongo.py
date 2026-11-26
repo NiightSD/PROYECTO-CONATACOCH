@@ -37,6 +37,8 @@ logger = logging.getLogger("core.mongo")
 
 _client = None
 _client_lock = threading.Lock()
+_indexes_ready = False
+_indexes_lock = threading.Lock()
 
 
 def get_client():
@@ -91,9 +93,10 @@ def reset_client() -> None:
     monitor en segundo plano reintentando y llenando el log de errores. La
     proxima llamada a `get_client()` vuelve a intentar la conexion.
     """
-    global _client
+    global _client, _indexes_ready
     with _client_lock:
         cliente, _client = _client, None
+        _indexes_ready = False
     if cliente is not None:
         try:
             cliente.close()
@@ -134,6 +137,30 @@ def ensure_indexes() -> dict[str, str]:
         name="idx_vehiculo_timestamp",
     )
     return nombres
+
+
+def ensure_indexes_once() -> dict[str, str]:
+    """Crea los indices una sola vez por proceso, sin abortar la peticion.
+
+    Se invoca al recibir telemetria y en el healthcheck para garantizar que una
+    base Atlas recien creada quede con ``2dsphere`` y TTL aunque el seed no se
+    haya ejecutado en ese proceso. Si Atlas no responde, se registra la
+    advertencia y la operacion continua (el error real aparecera al escribir).
+    """
+    global _indexes_ready
+    if _indexes_ready:
+        return {}
+    with _indexes_lock:
+        if _indexes_ready:
+            return {}
+        try:
+            nombres = ensure_indexes()
+            _indexes_ready = True
+            logger.info("Indices MongoDB asegurados: %s", ", ".join(nombres.values()))
+            return nombres
+        except Exception as exc:  # pragma: no cover - depende de red externa
+            logger.warning("No se pudieron asegurar los indices MongoDB: %s", exc)
+            return {}
 
 
 def ping(timeout_ms: int = 2000) -> tuple[bool, float]:

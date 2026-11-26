@@ -583,6 +583,10 @@ class TelemetriaEnviarView(APIView):
         cupos = serializer.validated_data["cupos_disponibles"]
         timestamp = serializer.validated_data.get("timestamp") or timezone.now()
 
+        # Garantiza 2dsphere + TTL en Atlas aunque el seed no haya corrido en
+        # este proceso; la llamada es idempotente y no bloquea si Atlas falla.
+        mongo.ensure_indexes_once()
+
         # --- Filtro cinematico anti-GPS-spoofing ---
         coleccion = mongo.get_collection()
         ultimo_punto = (

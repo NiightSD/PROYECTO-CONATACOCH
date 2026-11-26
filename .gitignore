@@ -1,6 +1,9 @@
 # Entornos y secretos
 .env
 .env.*
+# Variante sin punto usada en algunos entornos academicos (contiene secretos).
+/env
+!/env.example
 !.env.example
 
 # Python

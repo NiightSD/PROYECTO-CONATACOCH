@@ -16,7 +16,15 @@ def _cargar_env_local() -> None:
     permite que `manage.py` use exactamente MYSQL_*, MONGO_* y JWT_* del .env.
     Las variables ya presentes en el proceso siempre tienen prioridad (12-factor).
     """
-    for ruta in (BASE_DIR.parent / ".env", BASE_DIR / ".env"):
+    # Se acepta `.env` (estandar) y `env` (variante usada en algunos entornos
+    # academicos). El primero tiene prioridad y nunca se sobreescriben
+    # variables ya exportadas en el proceso.
+    for ruta in (
+        BASE_DIR.parent / ".env",
+        BASE_DIR / ".env",
+        BASE_DIR.parent / "env",
+        BASE_DIR / "env",
+    ):
         if not ruta.is_file():
             continue
         try:

@@ -96,12 +96,10 @@ CREATE TABLE IF NOT EXISTS `linea_colectiva` (
     UNIQUE KEY `uq_linea_folio_recorrido_traza`
         (`folio`, `nombre_recorrido`, `tipo_trazado`),
     KEY `idx_linea_region_folio`   (`region`, `folio`),
-    KEY `idx_linea_folio`          (`folio`),
     KEY `idx_linea_comuna_origen`  (`comuna_origen`),
     KEY `idx_linea_comuna_destino` (`comuna_destino`),
     KEY `idx_linea_tipo_servicio`  (`tipo_servicio`),
-    CONSTRAINT `chk_linea_region_folio` CHECK (`region` >= 1 AND `folio` >= 1),
-    CONSTRAINT `chk_linea_tarifa` CHECK (`tarifa_actual` >= 0)
+    CONSTRAINT `chk_linea_region_folio` CHECK (`region` >= 1 AND `folio` >= 1)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
@@ -204,8 +202,6 @@ CREATE TABLE IF NOT EXISTS `transaccion_pago` (
     KEY `idx_pago_linea_fecha`     (`linea_id`, `fecha_hora`),
     KEY `idx_pago_pasajero_fecha`  (`pasajero_id`, `fecha_hora`),
     KEY `idx_pago_estado_fecha`    (`estado`, `fecha_hora`),
-    KEY `idx_pago_fecha`           (`fecha_hora`),
-    KEY `idx_pago_estado`          (`estado`),
     CONSTRAINT `fk_pago_pasajero`
         FOREIGN KEY (`pasajero_id`) REFERENCES `usuario` (`id`)
         ON DELETE RESTRICT ON UPDATE RESTRICT,

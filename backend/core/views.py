@@ -92,11 +92,18 @@ class HealthView(APIView):
             mysql_ok = False
 
         mongo_ok, latencia = mongo.ping()
+        indices_ok = False
+        if mongo_ok:
+            # Idempotente: deja 2dsphere + TTL listos en una base Atlas nueva.
+            mongo.ensure_indexes_once()
+            indices_ok = True
         componentes["mongodb"] = {
             "status": "ok" if mongo_ok else "error",
             "latency_ms": latencia,
             "mode": "atlas" if settings.MONGO_ATLAS_URI else "local",
             "database": settings.MONGO_DB_NAME,
+            "collection": settings.MONGO_COLLECTION,
+            "indexes": "ok" if indices_ok else "pending",
         }
 
         if mysql_ok and mongo_ok:
